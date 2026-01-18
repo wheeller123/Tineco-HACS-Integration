@@ -25,10 +25,13 @@ jobs:
 
   validate-hassfest:
     name: Hassfest Validation
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
     steps:
-        - uses: "actions/checkout@v4"
-        - uses: "home-assistant/actions/hassfest@master"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Hassfest validation
+        uses: home-assistant/actions/hassfest@master
 
   lint:
     name: Lint with Ruff
@@ -50,5 +53,3 @@ jobs:
       - name: Lint with ruff
         run: |
           ruff check custom_components/tineco
-      - name: HACS Action
-        uses: hacs/action@22.5.0
