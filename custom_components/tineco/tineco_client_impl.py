@@ -129,7 +129,7 @@ class TinecoClient:
                     user_id = self.uid
                     username = response_data.get("userName", "")
                     
-                    print(f"[OK] Login successful!")
+                    print("[OK] Login successful!")
                     print(f"    User ID: {user_id}")
                     print(f"    Username: {username}")
                     return True, self.access_token, user_id
@@ -182,7 +182,7 @@ class TinecoClient:
                 "authTimespan": timestamp
             }
             
-            print(f"[INFO] Getting authCode...")
+            print("[INFO] Getting authCode...")
             response = self.session.get(url, params=query_params, timeout=10)
             
             if response.status_code == 200:
@@ -200,7 +200,7 @@ class TinecoClient:
                         print("[ERROR] authCode not in response")
                         return False
                     
-                    print(f"[OK] Got authCode!")
+                    print("[OK] Got authCode!")
                     print(f"    authCode: {self.auth_code[:20]}...")
                     return True
                 else:
@@ -223,7 +223,6 @@ class TinecoClient:
         try:
             import uuid
             device_uuid = str(uuid.uuid4())
-            timestamp = int(time.time() * 1000)
             
             payload = {
                 "todo": "loginByItToken",
@@ -237,7 +236,7 @@ class TinecoClient:
                 "org": "TEKWW"
             }
             
-            print(f"[INFO] Performing IoT login...")
+            print("[INFO] Performing IoT login...")
             response = self.session.post(self.IOT_LOGIN_ENDPOINT, json=payload, timeout=10)
             
             if response.status_code == 200:
@@ -251,7 +250,7 @@ class TinecoClient:
                     if "userId" in data:
                         self.uid = data.get("userId")
                     
-                    print(f"[OK] IoT login successful!")
+                    print("[OK] IoT login successful!")
                     print(f"    IoT Token: {self.iot_token[:20]}...")
                     print(f"    IoT Resource: {self.iot_resource}")
                     return True
@@ -328,7 +327,7 @@ class TinecoClient:
                 "refresh": "false"
             }
             
-            print(f"[INFO] Fetching device list...")
+            print("[INFO] Fetching device list...")
             response = self.session.get(url, params=query_params, timeout=10)
             
             if response.status_code == 200:
@@ -397,11 +396,11 @@ class TinecoClient:
             
             if response.status_code == 200:
                 if ngiot_ret == "ok":
-                    print(f"[OK] IoT endpoint returned success")
+                    print("[OK] IoT endpoint returned success")
                     if response.text:
                         try:
                             return response.json()
-                        except:
+                        except Exception:
                             return {"status": "ok", "session_id": session_id}
                     else:
                         return {"status": "ok", "session_id": session_id}
@@ -410,9 +409,9 @@ class TinecoClient:
                         try:
                             data = response.json()
                             if isinstance(data, dict) and ("code" in data and data.get("code") == "0000" or "payload" in data):
-                                print(f"[OK] Device status retrieved successfully")
+                                print("[OK] Device status retrieved successfully")
                                 return data
-                        except:
+                        except Exception:
                             pass
                     return None
             else:
@@ -468,12 +467,12 @@ class TinecoClient:
                     if response.text:
                         try:
                             return response.json()
-                        except:
+                        except Exception:
                             return {"status": "ok", "action": action}
                     else:
                         return {"status": "ok", "action": action}
                 else:
-                    print(f"[ERROR] Query failed")
+                    print("[ERROR] Query failed")
                     return None
             else:
                 print(f"[ERROR] HTTP Error: {response.status_code}")
@@ -607,7 +606,7 @@ class TinecoClient:
                 print(f"[DEBUG] X-Ngiot-Fmt: {ngiot_fmt}")
                 
                 if ngiot_ret == "ok":
-                    print(f"[OK] Command sent successfully")
+                    print("[OK] Command sent successfully")
                     if response.text and response.text.strip():
                         try:
                             return response.json()
@@ -622,7 +621,7 @@ class TinecoClient:
                             data = response.json()
                             print(f"[ERROR] Command response: {data}")
                             return data
-                        except:
+                        except Exception:
                             pass
                     return {"status": "unknown", "ngiot_ret": ngiot_ret}
             else:
@@ -644,7 +643,7 @@ def print_json(data, indent=2):
             print(json.dumps(data, indent=indent))
         else:
             print(data)
-    except:
+    except Exception:
         print(data)
 
 
@@ -670,7 +669,7 @@ def main():
         print("[ERROR] Login failed!")
         return 1
     
-    print(f"[OK] Login successful!")
+    print("[OK] Login successful!")
     print(f"    User ID: {user_id}")
     print()
     

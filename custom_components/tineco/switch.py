@@ -228,7 +228,7 @@ class TinecoAudioSwitch(TinecoBaseSwitch):
             if result:
                 _LOGGER.info(f"Sound command sent successfully: {on}, result: {result}")
             else:
-                _LOGGER.error(f"Failed to send sound command - no result returned")
+                _LOGGER.error("Failed to send sound command - no result returned")
                 
         except Exception as err:
             _LOGGER.error(f"Error sending volume command: {err}")

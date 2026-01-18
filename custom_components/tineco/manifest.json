@@ -4,11 +4,9 @@
   "codeowners": ["@wheeller123"],
   "config_flow": true,
   "integration_type": "device",
-  "manufacturer": "Jack Whelan",
   "documentation": "https://github.com/wheeller123/Tineco-HACS-Integration",
   "iot_class": "cloud_polling",
   "requirements": ["requests>=2.28.0"],
   "version": "1.1.0",
-  "issue_tracker": "https://github.com/wheeller123/Tineco-HACS-Integration/issues",
-  "homeassistant": "2024.1.0"
+  "issue_tracker": "https://github.com/wheeller123/Tineco-HACS-Integration/issues"
 }

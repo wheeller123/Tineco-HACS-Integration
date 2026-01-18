@@ -117,7 +117,7 @@ class TinecoVolumeSelect(SelectEntity):
                 self._last_command_time = datetime.now()
                 self.async_write_ha_state()
             else:
-                _LOGGER.error(f"Failed to send volume level command - no result returned")
+                _LOGGER.error("Failed to send volume level command - no result returned")
                 
         except Exception as err:
             _LOGGER.error(f"Error sending volume level command: {err}")

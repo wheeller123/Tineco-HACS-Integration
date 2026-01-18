@@ -1,7 +1,6 @@
 """Sensor platform for Tineco integration."""
 
 import logging
-import json
 from typing import Dict, Optional
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.core import HomeAssistant

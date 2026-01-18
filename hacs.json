@@ -1,9 +1,4 @@
 {
   "name": "Tineco IoT",
-  "homeassistant": "2024.1.0",
-  "documentation": "https://github.com/wheeller123/Tineco-HACS-Integration",
-  "issue_tracker": "https://github.com/wheeller123/Tineco-HACS-Integration/issues",
-  "requirements": ["requests>=2.28.0"],
-  "country": ["US", "EU", "CN", "JP", "IN"],
   "render_readme": true
 }
