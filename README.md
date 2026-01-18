@@ -67,7 +67,7 @@ Once configured, the integration will create the following entities:
 - `sensor.tineco_api_version` - API version  
 - `sensor.tineco_model` - Device model (e.g., S7 Flashdry)
 - `sensor.tineco_battery` - Battery level percentage
-- `sensor.tineco_vacuum_status` - Current vacuum status (idle, charging, in_operation, self_cleaning, docked_standby)
+- `sensor.tineco_vacuum_status` - Current vacuum status (idle, in_operation, self_cleaning, docked_standby)
 - `sensor.waste_water_tank_status` - Waste water tank status (clean/full)
 - `sensor.fresh_water_tank_status` - Fresh water tank status (empty/full)
 
@@ -78,6 +78,17 @@ Once configured, the integration will create the following entities:
 ### Automations Example
 
 ```yaml
+- alias: "Remind to empty tank after self-cleaning"
+  trigger:
+    - platform: state
+      entity_id: sensor.tineco_vacuum_status
+      from: "self_cleaning"
+      to: "idle"
+  action:
+    - service: notify.mobile_app_your_phone
+      data:
+        title: "Tineco Cleaning Complete"
+        message: "Self-cleaning cycle finished. Remember to empty the waste water tank!"
 - alias: "Notify when fresh water tank is empty"
   trigger:
     - platform: state
@@ -107,18 +118,6 @@ Once configured, the integration will create the following entities:
     - service: notify.notify
       data:
         message: "Your Tineco device is offline"
-
-- alias: "Remind to empty tank after self-cleaning"
-  trigger:
-    - platform: state
-      entity_id: sensor.tineco_vacuum_status
-      from: "self_cleaning"
-      to: "idle"
-  action:
-    - service: notify.mobile_app_your_phone
-      data:
-        title: "Tineco Cleaning Complete"
-        message: "Self-cleaning cycle finished. Remember to empty the waste water tank!"
 ```
 
 ## Troubleshooting
