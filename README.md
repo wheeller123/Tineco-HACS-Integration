@@ -75,7 +75,9 @@ Once configured, the integration will create the following entities:
 - `binary_sensor.tineco_online` - Device online status
 - `binary_sensor.tineco_charging` - Charging status
 
-### Automations Example
+### Automation Examples
+
+#### Remind to empty tank after self-cleaning
 
 ```yaml
 - alias: "Remind to empty tank after self-cleaning"
@@ -89,6 +91,11 @@ Once configured, the integration will create the following entities:
       data:
         title: "Tineco Cleaning Complete"
         message: "Self-cleaning cycle finished. Remember to empty the waste water tank!"
+```
+
+#### Notify when fresh water tank is empty
+
+```yaml
 - alias: "Notify when fresh water tank is empty"
   trigger:
     - platform: state
@@ -98,7 +105,11 @@ Once configured, the integration will create the following entities:
     - service: notify.notify
       data:
         message: "Tineco fresh water tank needs refilling"
+```
 
+#### Notify when waste water tank is full
+
+```yaml
 - alias: "Notify when waste water tank is full"
   trigger:
     - platform: state
@@ -108,7 +119,11 @@ Once configured, the integration will create the following entities:
     - service: notify.notify
       data:
         message: "Tineco waste water tank needs emptying"
+```
 
+#### Notify when Tineco goes offline
+
+```yaml
 - alias: "Notify when Tineco goes offline"
   trigger:
     - platform: state
