@@ -10,12 +10,9 @@ Control your Tineco smart devices through Home Assistant using this custom integ
   - API version
   - Device model
   - Battery level
-  - Vacuum status (idle, charging, in operation, self-cleaning, etc.)
+  - Vacuum status (idle, in_operation, self_cleaning, etc.)
   - Waste water tank status (clean/full)
   - Fresh water tank status (empty/full)
-- **Switch Entities**:
-  - Power control (turn device on/off)
-  - Charging control
 - **Binary Sensors**:
   - Online status
   - Charging status
@@ -74,10 +71,6 @@ Once configured, the integration will create the following entities:
 - `sensor.waste_water_tank_status` - Waste water tank status (clean/full)
 - `sensor.fresh_water_tank_status` - Fresh water tank status (empty/full)
 
-### Switches
-- `switch.tineco_power` - Device power control
-- `switch.tineco_charging` - Charging control
-
 ### Binary Sensors
 - `binary_sensor.tineco_online` - Device online status
 - `binary_sensor.tineco_charging` - Charging status
@@ -105,15 +98,6 @@ Once configured, the integration will create the following entities:
       data:
         message: "Tineco waste water tank needs emptying"
 
-- alias: "Turn off Tineco when battery is low"
-  trigger:
-    - platform: numeric_state
-      entity_id: sensor.tineco_battery
-      below: 20
-  action:
-    - service: switch.turn_off
-      entity_id: switch.tineco_power
-
 - alias: "Notify when Tineco goes offline"
   trigger:
     - platform: state
@@ -123,22 +107,6 @@ Once configured, the integration will create the following entities:
     - service: notify.notify
       data:
         message: "Your Tineco device is offline"
-
-- alias: "Start cleaning when home"
-  trigger:
-    - platform: state
-      entity_id: group.all_people
-      to: "home"
-  condition:
-    - condition: state
-      entity_id: sensor.waste_water_tank_status
-      state: "clean"
-    - condition: state
-      entity_id: sensor.fresh_water_tank_status
-      state: "full"
-  action:
-    - service: switch.turn_on
-      entity_id: switch.tineco_power
 
 - alias: "Remind to empty tank after self-cleaning"
   trigger:
