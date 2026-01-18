@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../apk"
+		}
+	],
+	"settings": {
+		"powershell.cwd": "HACS"
+	}
+}

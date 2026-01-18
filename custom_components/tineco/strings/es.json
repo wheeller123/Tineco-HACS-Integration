@@ -1,0 +1,73 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Cuenta de Tineco IoT",
+        "description": "Introduce tus credenciales de Tineco para conectar tus dispositivos",
+        "data": {
+          "email": "Dirección de correo electrónico",
+          "password": "Contraseña"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Correo electrónico o contraseña inválidos",
+      "unknown": "Ocurrió un error desconocido"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configuración de Tineco",
+        "description": "Configura el intervalo de actualización y las opciones del dispositivo",
+        "data": {
+          "scan_interval": "Intervalo de actualización (segundos)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "device_status": {
+        "name": "Estado del dispositivo"
+      },
+      "firmware_version": {
+        "name": "Versión del firmware"
+      },
+      "api_version": {
+        "name": "Versión de API"
+      },
+      "model": {
+        "name": "Modelo"
+      },
+      "vacuum_status": {
+        "name": "Estado de Aspiradora",
+        "state": {
+          "idle": "Inactivo",
+          "in_operation": "En Operación",
+          "self_cleaning": "Auto Limpieza"
+        }
+      },
+      "waste_water_tank_status": {
+        "name": "Estado del Tanque de Aguas Residuales",
+        "state": {
+          "clean": "Limpio",
+          "dirty": "Sucio"
+        }
+      }
+    },
+    "switch": {
+      "power": {
+        "name": "Energía"
+      }
+    },
+    "binary_sensor": {
+      "online": {
+        "name": "En línea"
+      },
+      "charging": {
+        "name": "Cargando"
+      }
+    }
+  }
+}

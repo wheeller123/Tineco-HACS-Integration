@@ -1,0 +1,12 @@
+{
+  "domain": "tineco",
+  "name": "Tineco IoT",
+  "codeowners": ["@jackwhelan"],
+  "config_flow": true,
+  "documentation": "https://github.com/jackwhelan/hacs-tineco",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "1.0.1",
+  "issue_tracker": "https://github.com/jackwhelan/hacs-tineco/issues",
+  "homeassistant": "2024.1.0"
+}

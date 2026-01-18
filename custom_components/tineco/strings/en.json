@@ -1,0 +1,80 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Tineco IoT Account",
+        "description": "Enter your Tineco account credentials to connect your devices",
+        "data": {
+          "email": "Email address",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid email or password",
+      "cannot_connect": "Cannot connect to Tineco servers",
+      "unknown": "An unknown error occurred"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Tineco Settings",
+        "description": "Configure how often to poll device status (30-3600 seconds)",
+        "data": {
+          "scan_interval": "Update interval (seconds)"
+        },
+        "data_description": {
+          "scan_interval": "How often to check device status. Lower values provide faster updates but may increase API usage. Default: 60 seconds."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "device_status": {
+        "name": "Device Status"
+      },
+      "firmware_version": {
+        "name": "Firmware Version"
+      },
+      "api_version": {
+        "name": "API Version"
+      },
+      "model": {
+        "name": "Model"
+      },
+      "battery": {
+        "name": "Battery"
+      },
+      "vacuum_status": {
+        "name": "Vacuum Status",
+        "state": {
+          "idle": "Idle",
+          "in_operation": "In Operation",
+          "self_cleaning": "Self Cleaning"
+        }
+      },
+      "waste_water_tank_status": {
+        "name": "Waste Water Tank Status",
+        "state": {
+          "clean": "Clean",
+          "dirty": "Dirty"
+        }
+      }
+    },
+    "switch": {
+      "power": {
+        "name": "Power"
+      }
+    },
+    "binary_sensor": {
+      "online": {
+        "name": "Online"
+      },
+      "charging": {
+        "name": "Charging"
+      }
+    }
+  }
+}
