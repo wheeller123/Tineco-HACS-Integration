@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get version from manifest
+        id: version
+        run: |
+          version=$(cat custom_components/tineco/manifest.json | jq -r '.version')
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Validate version matches tag
+        if: github.event_name == 'release'
+        run: |
+          tag_version="${GITHUB_REF#refs/tags/v}"
+          manifest_version="${{ steps.version.outputs.version }}"
+          if [ "$tag_version" != "$manifest_version" ]; then
+            echo "Error: Tag version ($tag_version) does not match manifest version ($manifest_version)"
+            exit 1
+          fi
+
+      - name: Create zip file
+        run: |
+          cd custom_components
+          zip -r ../tineco.zip tineco/
+
+      - name: Upload release asset
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./tineco.zip
+          asset_name: tineco.zip
+          asset_content_type: application/zip

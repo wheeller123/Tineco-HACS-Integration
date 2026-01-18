@@ -8,7 +8,7 @@
   "documentation": "https://github.com/wheeller123/Tineco-HACS-Integration",
   "iot_class": "cloud_polling",
   "requirements": [],
-  "version": "1.0.0",
+  "version": "1.1.0",
   "issue_tracker": "https://github.com/wheeller123/Tineco-HACS-Integration/issues",
   "homeassistant": "2024.1.0"
 }
