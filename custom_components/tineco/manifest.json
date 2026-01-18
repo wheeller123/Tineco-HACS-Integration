@@ -1,7 +1,7 @@
 {
   "domain": "tineco",
   "name": "Tineco IoT",
-  "codeowners": ["@jackwhelan"],
+  "codeowners": ["@wheeller123"],
   "config_flow": true,
   "integration_type": "device",
   "manufacturer": "Jack Whelan",
