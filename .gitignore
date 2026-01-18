@@ -34,3 +34,6 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+# Deployment scripts
+deploy-to-homeassistant.ps1
