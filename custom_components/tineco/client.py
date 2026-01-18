@@ -155,7 +155,8 @@ class TinecoDeviceClient:
 
     async def async_control_device(self, device_id: str, 
                                   command: Dict,
-                                  device_sn: str = "") -> Optional[Dict]:
+                                  device_sn: str = "",
+                                  device_class: str = "") -> Optional[Dict]:
         """Send control command to device."""
         if not self._initialized or not self.client:
             return None
@@ -164,7 +165,7 @@ class TinecoDeviceClient:
             loop = asyncio.get_event_loop()
             return await loop.run_in_executor(
                 None,
-                lambda: self.client.control_device(device_id, command, device_sn)
+                lambda: self.client.control_device(device_id, command, device_sn, device_class)
             )
         except Exception as err:
             _LOGGER.error(f"Error sending device command: {err}")

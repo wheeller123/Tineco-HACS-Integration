@@ -6,10 +6,9 @@ import sys
 import os
 
 # Add paths to import the Tineco client directly
-parent_dir = os.path.dirname(os.path.dirname(__file__))
-sys.path.insert(0, os.path.join(parent_dir, 'apk', 'Decompiled', 'Project'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'custom_components', 'tineco'))
 
-from tineco import TinecoClient
+from tineco_client_impl import TinecoClient
 
 
 def test_tineco_data():
@@ -191,6 +190,54 @@ def test_tineco_data():
     else:
         print("    ⚠️ No water tank fields found!")
     
+    # Volume control test
+    print("\n" + "="*80)
+    print("VOLUME CONTROL TEST")
+    print("="*80)
+    
+    print("\n[4/4] Testing volume control command...")
+    
+    # Check current volume state
+    print("\n📢 Current volume/mute state:")
+    for endpoint_key in ['gci', 'cfp']:
+        if endpoint_key in info and isinstance(info[endpoint_key], dict):
+            if 'vl' in info[endpoint_key]:
+                vl_value = info[endpoint_key]['vl']
+                state = "ON (Unmuted)" if vl_value == 1 else "OFF (Muted)"
+                print(f"    {endpoint_key}.vl: {vl_value} → {state}")
+    
+    # Test volume control - automatically send ms=0
+    print("\n🔧 Testing volume control with {'ms': 0}...")
+    command = {"ms": 0}
+    
+    print(f"   Device ID: {device_id}")
+    print(f"   Device Class: {device_class}")
+    print(f"   Device Resource: {device_resource}")
+    
+    result = client.control_device(device_id, command, device_resource, device_class)
+    
+    if result:
+        print(f"\n✅ Command sent successfully!")
+        print(f"   Response: {json.dumps(result, indent=2)}")
+        
+        # Wait and check new state
+        import time
+        print("\n⏳ Waiting 2 seconds for device to update...")
+        time.sleep(2)
+        
+        print("\n🔄 Fetching updated device info...")
+        updated_info = client.get_complete_device_info(device_id, device_class, device_resource)
+        
+        if updated_info:
+            print("\n📢 Updated volume/mute state:")
+            for endpoint_key in ['gci', 'cfp']:
+                if endpoint_key in updated_info and isinstance(updated_info[endpoint_key], dict):
+                    if 'vl' in updated_info[endpoint_key]:
+                        vl_value = updated_info[endpoint_key]['vl']
+                        state = "ON (Unmuted)" if vl_value == 1 else "OFF (Muted)"
+                        print(f"    {endpoint_key}.vl: {vl_value} → {state}")
+    else:
+        print(f"\n❌ Command failed - no response received")
     print("\n" + "="*80)
     print("TEST COMPLETE")
     print("="*80)

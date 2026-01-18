@@ -13,6 +13,10 @@ Control your Tineco smart devices through Home Assistant using this custom integ
   - Vacuum status (idle, in_operation, self_cleaning, etc.)
   - Waste water tank status (clean/full)
   - Fresh water tank status (empty/full)
+- **Switch Controls**:
+  - Sound on/off (mute/unmute)
+- **Select Controls**:
+  - Volume level (Low, Medium, High)
 - **Binary Sensors**:
   - Online status
   - Charging status
@@ -50,14 +54,6 @@ Control your Tineco smart devices through Home Assistant using this custom integ
 4. Enter your Tineco account email and password
 5. Click **Submit**
 
-### Via YAML (Alternative)
-
-```yaml
-tineco:
-  email: your_email@example.com
-  password: your_password
-```
-
 ## Usage
 
 Once configured, the integration will create the following entities:
@@ -70,6 +66,12 @@ Once configured, the integration will create the following entities:
 - `sensor.tineco_vacuum_status` - Current vacuum status (idle, in_operation, self_cleaning, docked_standby)
 - `sensor.waste_water_tank_status` - Waste water tank status (clean/full)
 - `sensor.fresh_water_tank_status` - Fresh water tank status (empty/full)
+
+### Switches
+- `switch.tineco_sound` - Sound on/off (mute/unmute control)
+
+### Selects
+- `select.tineco_volume_level` - Volume level selection (Low, Medium, High)
 
 ### Binary Sensors
 - `binary_sensor.tineco_online` - Device online status
@@ -181,6 +183,8 @@ This integration uses the following device queries:
 - `e3` - Error code 3 (other errors)
 - `vs` - Device online status
 - `wp` - Water pressure/percentage
+- `vl` - Volume level (1=Low, 2=Medium, 3=High)
+- `ms` - Mute status (0=unmuted, 1=muted)
 
 ## Support
 
@@ -193,7 +197,7 @@ Created by Jack Whelan
 
 ## Disclaimer
 
-This integration is not affiliated with Tineco. It uses reverse-engineered APIs. Use at your own risk.
+This integration is not affiliated with Tineco. It uses reverse-engineered APIs. Use at your own risk. I developed this specifically for my S7 Flashdry, it may not work with other models but I am happy to try and add others with comminuty support
 
 ## License
 

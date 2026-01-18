@@ -549,44 +549,91 @@ class TinecoClient:
             return info
     
     def control_device(self, device_id: str, command: Dict, 
-                      device_sn: str = "", session_id: str = "") -> Optional[Dict]:
+                      device_sn: str = "", device_class: str = "", session_id: str = "", action: str = "cfp") -> Optional[Dict]:
         """Send control command to device via IoT API"""
         if not self.access_token:
             print("[ERROR] Not logged in. Call login() first.")
             return None
         
         try:
+            import random
+            import string
+            
+            if not session_id:
+                chars = string.ascii_letters + string.digits
+                session_id = ''.join(random.choice(chars) for _ in range(16))
+            
             params = {
-                "ct": "i",
+                "ct": "q",
                 "eid": device_id,
-                "fmt": "j"
+                "fmt": "j",
+                "apn": action,
+                "si": session_id
             }
             
-            if session_id:
-                params["si"] = session_id
+            if device_class:
+                params["et"] = device_class
             if device_sn:
                 params["er"] = device_sn
             
-            params["accessToken"] = self.access_token
-            params["uid"] = self.uid
+            headers = {
+                "Authorization": f"Bearer {self.iot_token if self.iot_token else self.access_token}",
+                "X-ECO-REQUEST-ID": session_id
+            }
             
             print(f"[INFO] Sending command to device {device_id}...")
-            response = self.session.post(self.IOT_API_BASE, params=params, json=command, timeout=10)
+            print(f"[DEBUG] Base URL: {self.IOT_API_BASE}")
+            print(f"[DEBUG] Query Params: {params}")
+            
+            # Construct full URL for display
+            from urllib.parse import urlencode
+            full_url = f"{self.IOT_API_BASE}?{urlencode(params)}"
+            print(f"[DEBUG] Full URL: {full_url}")
+            
+            print(f"[DEBUG] Headers: {headers}")
+            print(f"[DEBUG] JSON Body: {command}")
+            
+            response = self.session.post(self.IOT_API_BASE, params=params, headers=headers, json=command, timeout=10)
+            
+            print(f"[DEBUG] Response status: {response.status_code}")
+            print(f"[DEBUG] Response headers: {dict(response.headers)}")
+            print(f"[DEBUG] Response body: '{response.text}'")
             
             if response.status_code == 200:
-                data = response.json()
-                if isinstance(data, dict) and "code" in data and data.get("code") == "0000":
+                ngiot_ret = response.headers.get("X-NGIOT-RET", "")
+                ngiot_fmt = response.headers.get("X-Ngiot-Fmt", "")
+                
+                print(f"[DEBUG] X-NGIOT-RET: {ngiot_ret}")
+                print(f"[DEBUG] X-Ngiot-Fmt: {ngiot_fmt}")
+                
+                if ngiot_ret == "ok":
                     print(f"[OK] Command sent successfully")
-                    return data
+                    if response.text and response.text.strip():
+                        try:
+                            return response.json()
+                        except json.JSONDecodeError:
+                            return {"status": "ok", "note": "empty json response"}
+                    else:
+                        return {"status": "ok", "note": "no response body"}
                 else:
-                    print(f"[ERROR] Command failed: {data}")
-                    return data
+                    print(f"[WARNING] X-NGIOT-RET not 'ok': {ngiot_ret}")
+                    if response.text:
+                        try:
+                            data = response.json()
+                            print(f"[ERROR] Command response: {data}")
+                            return data
+                        except:
+                            pass
+                    return {"status": "unknown", "ngiot_ret": ngiot_ret}
             else:
                 print(f"[ERROR] HTTP Error: {response.status_code}")
+                print(f"[ERROR] Response body: {response.text}")
                 return None
                 
         except Exception as e:
             print(f"[ERROR] Error sending command: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return None
 
 
