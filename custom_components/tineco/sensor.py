@@ -32,6 +32,7 @@ async def async_setup_entry(
         TinecoBatterySensor(config_entry, hass, coordinator),
         TinecoVacuumStatusSensor(config_entry, hass, coordinator),
         TinecoWaterTankSensor(config_entry, hass, coordinator),
+        TinecoFreshWaterTankSensor(config_entry, hass, coordinator),
     ]
     
     async_add_entities(sensors)
@@ -51,7 +52,11 @@ class TinecoBaseSensor(CoordinatorEntity, SensorEntity):
         
         email = config_entry.data.get("email", "")
         self._attr_unique_id = f"{DOMAIN}_{email}_{sensor_type}"
-        self._attr_name = f"Tineco {sensor_type.replace('_', ' ').title()}"
+        # Don't add Tineco prefix for water tank sensors
+        if "water_tank" in sensor_type:
+            self._attr_name = f"{sensor_type.replace('_', ' ').title()}"
+        else:
+            self._attr_name = f"Tineco {sensor_type.replace('_', ' ').title()}"
 
     @property
     def state(self):
@@ -69,7 +74,7 @@ class TinecoBaseSensor(CoordinatorEntity, SensorEntity):
         return {
             "identifiers": {(DOMAIN, self.config_entry.entry_id)},
             "name": "Tineco Device",
-            "manufacturer": "Tineco",
+            "manufacturer": "Jack Whelan",
             "model": self._device_info.get("model", "IoT Device"),
         }
 
@@ -492,7 +497,7 @@ class TinecoWaterTankSensor(TinecoBaseSensor):
         super().__init__(config_entry, "waste_water_tank_status", hass, coordinator)
         self._state = "clean"
         self._attr_device_class = SensorDeviceClass.ENUM
-        self._attr_options = ["clean", "dirty"]
+        self._attr_options = ["clean", "full"]
         self._attr_translation_key = "waste_water_tank_status"
 
     def _update_state_from_data(self, info: Dict):
@@ -521,7 +526,7 @@ class TinecoWaterTankSensor(TinecoBaseSensor):
             self._state = "unknown"
 
     def _parse_water_tank_status(self, payload: Dict) -> Optional[str]:
-        """Parse water tank status from payload."""
+        """Parse waste water tank status from payload."""
         if not isinstance(payload, dict):
             return None
         
@@ -539,25 +544,107 @@ class TinecoWaterTankSensor(TinecoBaseSensor):
                     result.update(extract_values(item, target_keys))
             return result
         
-        # Extract e2 error code (64 = dirty water tank full)
-        fields = extract_values(payload, ["e2"])
+        # Extract e1 (waste water tank error) - currently no field found in API
+        # Default to clean since we don't have a reliable field yet
+        fields = extract_values(payload, ["e1", "mdt"])
         
-        e2 = fields.get("e2")
-        if e2 is not None:
+        # Check e1 field if it exists (might indicate waste tank issue)
+        e1 = fields.get("e1")
+        if e1 is not None:
             try:
-                error_code = int(e2)
-                # e2=64: Dirty water tank full
-                if error_code == 64:
-                    return "Dirty"
+                error_code = int(e1)
+                if error_code > 0:
+                    return "full"
             except (ValueError, TypeError):
                 pass
         
-        return "Clean"
+        return "clean"
     
     @property
     def icon(self):
         """Return the icon based on state."""
-        if self._state == "dirty":
+        if self._state == "full":
             return "mdi:water-alert"
         else:
             return "mdi:water"
+
+
+class TinecoFreshWaterTankSensor(TinecoBaseSensor):
+    """Sensor for fresh water tank status."""
+
+    def __init__(self, config_entry: ConfigEntry, hass: HomeAssistant, coordinator):
+        """Initialize."""
+        super().__init__(config_entry, "fresh_water_tank_status", hass, coordinator)
+        self._state = "full"
+        self._attr_device_class = SensorDeviceClass.ENUM
+        self._attr_options = ["empty", "low", "full"]
+        self._attr_translation_key = "fresh_water_tank_status"
+
+    def _update_state_from_data(self, info: Dict):
+        """Update state from device info."""
+        try:
+            payload = None
+            
+            if isinstance(info, dict):
+                # Priority: gci > cfp
+                if 'gci' in info and isinstance(info['gci'], dict):
+                    payload = info['gci']
+                elif 'cfp' in info and isinstance(info['cfp'], dict):
+                    payload = info['cfp']
+            
+            if payload:
+                status = self._parse_fresh_water_status(payload)
+                if status:
+                    self._state = status
+                    return
+            
+            # Default to full if we can't determine
+            self._state = "full"
+            
+        except Exception as err:
+            _LOGGER.error(f"Error parsing fresh water tank status: {err}", exc_info=True)
+            self._state = "unknown"
+
+    def _parse_fresh_water_status(self, payload: Dict) -> Optional[str]:
+        """Parse fresh water tank status from payload."""
+        if not isinstance(payload, dict):
+            return None
+        
+        def extract_values(obj, target_keys):
+            result = {}
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    k_lower = k.lower() if isinstance(k, str) else ""
+                    if k_lower in target_keys:
+                        result[k_lower] = v
+                    if isinstance(v, (dict, list, tuple)):
+                        result.update(extract_values(v, target_keys))
+            elif isinstance(obj, (list, tuple)):
+                for item in obj:
+                    result.update(extract_values(item, target_keys))
+            return result
+        
+        # Extract e2 (fresh water tank error code)
+        fields = extract_values(payload, ["e2"])
+        
+        # Check e2 field: 64 = fresh water tank empty
+        e2 = fields.get("e2")
+        if e2 is not None:
+            try:
+                error_code = int(e2)
+                if error_code == 64:
+                    return "empty"
+            except (ValueError, TypeError):
+                pass
+        
+        return "full"
+    
+    @property
+    def icon(self):
+        """Return the icon based on state."""
+        if self._state == "empty":
+            return "mdi:water-off"
+        elif self._state == "low":
+            return "mdi:water-minus"
+        else:
+            return "mdi:water-check"

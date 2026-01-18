@@ -45,7 +45,7 @@ class TinecoBaseSwitch(SwitchEntity):
         return {
             "identifiers": {(DOMAIN, self.config_entry.entry_id)},
             "name": "Tineco Device",
-            "manufacturer": "Tineco",
+            "manufacturer": "Jack Whelan",
             "model": "IoT Device",
         }
 

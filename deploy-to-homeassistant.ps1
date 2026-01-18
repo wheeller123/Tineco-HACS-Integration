@@ -10,7 +10,7 @@
 #>
 
 # Configuration
-$SourcePath = "C:\Users\jwhel\Documents\Projects\Tineco\HACS\custom_components"
+$SourcePath = "C:\Users\jwhel\Documents\Projects\Tineco\Tineco-HACS-Integration\custom_components"
 $DestinationPath = "\\192.168.0.101\config\custom_components"
 $HomeAssistantHost = "192.168.0.101"
 $SSHUsername = "jack"
