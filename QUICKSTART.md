@@ -13,6 +13,9 @@
    - Category: Integration
 
 3. **Install & Configure**
+
+Note: Ensure your Tineco device is powered on and connected to the app before adding the integration
+
    - HACS → Integrations → Search "Tineco IoT" → Install
    - Restart Home Assistant
    - Settings → Devices & Services → Create Integration → Tineco IoT
