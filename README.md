@@ -26,6 +26,7 @@ Control your Tineco smart devices through Home Assistant using this custom integ
 ## Installation
 
 ### Via HACS
+Note: Ensure your Tineco device is powered on and connected to the app before adding the integration
 
 1. Go to **HACS** → **Integrations**
 2. Click the three dots menu → **Custom repositories**
