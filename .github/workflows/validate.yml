@@ -15,24 +15,17 @@ jobs:
     name: HACS Validation
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: HACS validation
-        uses: hacs/action@main
+        uses: "hacs/action@main"
         with:
-          category: integration
-          ignore: brands
+          category: "integration"
 
   validate-hassfest:
     name: Hassfest Validation
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Hassfest validation
-        uses: home-assistant/actions/hassfest@master
+      - uses: "actions/checkout@v3"
+      - uses: home-assistant/actions/hassfest@master
 
   lint:
     name: Lint with Ruff
