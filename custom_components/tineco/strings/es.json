@@ -3,15 +3,25 @@
     "step": {
       "user": {
         "title": "Cuenta de Tineco IoT",
-        "description": "Introduce tus credenciales de Tineco para conectar tus dispositivos",
+        "description": "Introduce tus credenciales de Tineco. Selecciona la región que coincida con tu registro en la aplicación móvil (normalmente IE para Europa).",
         "data": {
           "email": "Dirección de correo electrónico",
-          "password": "Contraseña"
+          "password": "Contraseña",
+          "region": "Región (Por defecto: IE)"
+        }
+      },
+      "otp": {
+        "title": "Verificación del dispositivo",
+        "description": "Se ha enviado un código de verificación a {email}. Introduce el código de 6 dígitos a continuación para autorizar esta instancia de Home Assistant.",
+        "data": {
+          "code": "Código de verificación"
         }
       }
     },
     "error": {
       "invalid_auth": "Correo electrónico o contraseña inválidos",
+      "invalid_code": "Código de verificación inválido",
+      "cannot_connect": "No se puede conectar con los servidores de Tineco",
       "unknown": "Ocurrió un error desconocido"
     }
   },
@@ -19,9 +29,14 @@
     "step": {
       "init": {
         "title": "Configuración de Tineco",
-        "description": "Configura el intervalo de actualización y las opciones del dispositivo",
+        "description": "Configura los parámetros de conexión.",
         "data": {
-          "scan_interval": "Intervalo de actualización (segundos)"
+          "scan_interval": "Intervalo de actualización (segundos)",
+          "region": "Región del servidor"
+        },
+        "data_description": {
+          "scan_interval": "Con qué frecuencia comprobar el estado del dispositivo. Valores más bajos proporcionan actualizaciones más rápidas pero pueden aumentar el uso de la API. Por defecto: 60 segundos.",
+          "region": "La región del servidor utilizada para las peticiones API."
         }
       }
     }
@@ -39,6 +54,9 @@
       },
       "model": {
         "name": "Modelo"
+      },
+      "battery": {
+        "name": "Batería"
       },
       "vacuum_status": {
         "name": "Estado de Aspiradora",
