@@ -1,4 +1,4 @@
-# Tineco IoT - Home Assistant HACS Integration
+# Tineco - Home Assistant HACS Integration
 
 Control your Tineco smart devices through Home Assistant using this custom integration.
 
