@@ -11,20 +11,24 @@ _LOGGER = logging.getLogger(__name__)
 
 def _run_in_executor(func):
     """Run a sync function in an executor."""
+
     @functools.wraps(func)
     async def wrapper(*args, **kwargs):
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
+
     return wrapper
 
 
 class TinecoDeviceClient:
     """Adapter for Tineco IoT API client."""
 
-    def __init__(self, email: str, password: str):
+    def __init__(self, email: str, password: str, device_id: str = None, region: str = "IE"):
         """Initialize Tineco device client."""
         self.email = email
         self.password = password
+        self.device_id = device_id
+        self.region = region
         self.client = None
         self.devices: List[Dict] = []
         self._initialized = False
@@ -33,15 +37,16 @@ class TinecoDeviceClient:
     async def async_login(self) -> bool:
         """Authenticate with Tineco API."""
         try:
-            self.client = TinecoClient()
+            self.client = TinecoClient(device_id=self.device_id, region=self.region)
             # Run blocking I/O in executor to avoid blocking event loop
             loop = asyncio.get_event_loop()
             success, token, user_id = await loop.run_in_executor(
-                None, self.client.login, self.email, self.password
+                None,
+                lambda: self.client.login(self.email, self.password, request_code=False)
             )
-            
+
             if success:
-                _LOGGER.info("Successfully logged into Tineco API")
+                _LOGGER.info(f"Successfully logged into Tineco API ({self.region}). UID: {user_id}")
                 self._initialized = True
                 return True
             else:
@@ -52,10 +57,7 @@ class TinecoDeviceClient:
             return False
 
     async def async_get_devices(self) -> Optional[List[Dict]]:
-        """Get list of devices."""
-        if not self._initialized or not self.client:
-            return None
-
+        if not self._initialized or not self.client: return None
         try:
             loop = asyncio.get_event_loop()
             devices_response = await loop.run_in_executor(None, self.client.get_devices)
@@ -67,27 +69,19 @@ class TinecoDeviceClient:
             _LOGGER.error(f"Error getting devices: {err}")
             return None
 
-    async def async_get_device_info(self, device_id: str, 
-                                    device_class: str = "", 
-                                    device_resource: str = "") -> Optional[Dict]:
-        """Get complete device information."""
-        if not self._initialized or not self.client:
-            return None
-
+    async def async_get_device_info(self, device_id: str, device_class: str = "", device_resource: str = "") -> Optional[Dict]:
+        if not self._initialized or not self.client: return None
         try:
             loop = asyncio.get_event_loop()
-            info = await loop.run_in_executor(
-                None,
-                lambda: self.client.get_complete_device_info(device_id, device_class, device_resource)
-            )
+            info = await loop.run_in_executor(None, lambda: self.client.get_complete_device_info(device_id, device_class, device_resource))
             return info if info else None
         except Exception as err:
             _LOGGER.error(f"Error getting device info: {err}")
             return None
 
     async def async_get_controller_info(self, device_id: str,
-                                       device_class: str = "",
-                                       device_resource: str = "") -> Optional[Dict]:
+                                        device_class: str = "",
+                                        device_resource: str = "") -> Optional[Dict]:
         """Get controller info (GCI)."""
         if not self._initialized or not self.client:
             return None
@@ -153,10 +147,10 @@ class TinecoDeviceClient:
             _LOGGER.error(f"Error querying device mode: {err}")
             return None
 
-    async def async_control_device(self, device_id: str, 
-                                  command: Dict,
-                                  device_sn: str = "",
-                                  device_class: str = "") -> Optional[Dict]:
+    async def async_control_device(self, device_id: str,
+                                   command: Dict,
+                                   device_sn: str = "",
+                                   device_class: str = "") -> Optional[Dict]:
         """Send control command to device."""
         if not self._initialized or not self.client:
             return None

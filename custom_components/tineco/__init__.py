@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DOMAIN
+from .tineco_client_impl import TinecoClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,14 +23,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     email = entry.data.get("email")
     password = entry.data.get("password")
 
-    client = TinecoDeviceClient(email, password)
+    device_id = entry.data.get("device_id")
+    region = entry.data.get("region", "IE")
+
+    if not device_id:
+        _LOGGER.warning("No device_id found. Generating new one.")
+        device_id = TinecoClient.generate_valid_device_id()
+
+    client = TinecoDeviceClient(email, password, device_id, region)
     device_ctx = None
 
-    # Try to authenticate and discover devices
     try:
         logged_in = await client.async_login()
         if not logged_in:
-            _LOGGER.warning("Tineco login failed during setup; entities may show Unknown until next update")
+            _LOGGER.warning(f"Tineco login failed ({region}) during setup; entities may show Unknown until next update")
         else:
             devices = await client.async_get_devices()
             if devices and client.devices:
@@ -46,6 +53,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = {
         "email": email,
         "password": password,
+        "device_id": device_id,
+        "region": region,
         "client": client,
         "device": device_ctx,
     }
@@ -55,7 +64,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         """Fetch data from API."""
         stored = hass.data[DOMAIN][entry.entry_id]
         stored_client = stored.get("client")
-        
+
         if not stored_client._initialized:
             logged_in = await stored_client.async_login()
             if not logged_in:
@@ -67,20 +76,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             devices = await stored_client.async_get_devices()
             if not devices or not stored_client.devices:
                 raise UpdateFailed("No devices found")
+
             first = stored_client.devices[0]
             stored_device = {
                 "id": first.get("did") or first.get("deviceId"),
                 "class": first.get("className", ""),
                 "resource": first.get("resource", ""),
             }
+            # Update stored context
             stored["device"] = stored_device
 
-        device_id = stored_device.get("id")
-        device_class = stored_device.get("class", "")
-        device_resource = stored_device.get("resource", "")
+        target_id = stored_device.get("id")
+        target_class = stored_device.get("class", "")
+        target_resource = stored_device.get("resource", "")
 
         # Fetch device info once for all entities
-        info = await stored_client.async_get_device_info(device_id, device_class, device_resource)
+        info = await stored_client.async_get_device_info(target_id, target_class, target_resource)
         if not info:
             raise UpdateFailed("Failed to get device info")
         return info
@@ -95,8 +106,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         update_interval=timedelta(seconds=scan_interval),
     )
 
-    # Fetch initial data
-    await coordinator.async_config_entry_first_refresh()
+    # Fetch initial data (ignore error on first run to allow setup to finish)
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except Exception as ex:
+        _LOGGER.warning(f"Initial refresh failed: {ex}. Retrying in background.")
 
     # Store coordinator
     hass.data[DOMAIN][entry.entry_id]["coordinator"] = coordinator
