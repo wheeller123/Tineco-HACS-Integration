@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Tineco IoT Account",
-        "description": "Enter your Tineco account credentials. Select the region matching your mobile app registration (usually IE for Europe).",
+        "description": "Enter your Tineco account credentials. Select the region matching your mobile app registration.",
         "data": {
           "email": "Email address",
           "password": "Password",
@@ -29,7 +29,7 @@
     "step": {
       "init": {
         "title": "Tineco Settings",
-        "description": "Configure connection parameters.",
+        "description": "Configure how often to poll device status (30-3600 seconds)",
         "data": {
           "scan_interval": "Update interval (seconds)",
           "region": "Server Region"

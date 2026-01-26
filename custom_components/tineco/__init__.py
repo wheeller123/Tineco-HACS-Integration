@@ -36,7 +36,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     try:
         logged_in = await client.async_login()
         if not logged_in:
-            _LOGGER.warning(f"Tineco login failed ({region}) during setup.")
+            _LOGGER.warning(f"Tineco login failed ({region}) during setup; entities may show Unknown until next update")
         else:
             devices = await client.async_get_devices()
             if devices and client.devices:
@@ -70,12 +70,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if not logged_in:
                 raise UpdateFailed("Failed to login to Tineco API")
 
-        # Get device context if missing
+        # Get device context
         stored_device = stored.get("device")
         if not stored_device:
             devices = await stored_client.async_get_devices()
             if not devices or not stored_client.devices:
-                raise UpdateFailed("No devices found attached to this account")
+                raise UpdateFailed("No devices found")
 
             first = stored_client.devices[0]
             stored_device = {
@@ -93,7 +93,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Fetch device info once for all entities
         info = await stored_client.async_get_device_info(target_id, target_class, target_resource)
         if not info:
-            raise UpdateFailed("Failed to retrieve device status")
+            raise UpdateFailed("Failed to get device info")
         return info
 
     # Get scan interval from options or default to 60s

@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Cuenta de Tineco IoT",
-        "description": "Introduce tus credenciales de Tineco. Selecciona la región que coincida con tu registro en la aplicación móvil (normalmente IE para Europa).",
+        "description": "Introduce tus credenciales de Tineco. Selecciona la región que coincida con tu registro en la aplicación móvil.",
         "data": {
           "email": "Dirección de correo electrónico",
           "password": "Contraseña",
@@ -29,7 +29,7 @@
     "step": {
       "init": {
         "title": "Configuración de Tineco",
-        "description": "Configura los parámetros de conexión.",
+        "description": "Configura el intervalo de actualización y las opciones del dispositivo",
         "data": {
           "scan_interval": "Intervalo de actualización (segundos)",
           "region": "Región del servidor"

@@ -38,7 +38,7 @@ class TinecoDeviceClient:
         """Authenticate with Tineco API."""
         try:
             self.client = TinecoClient(device_id=self.device_id, region=self.region)
-
+            # Run blocking I/O in executor to avoid blocking event loop
             loop = asyncio.get_event_loop()
             success, token, user_id = await loop.run_in_executor(
                 None,
@@ -50,7 +50,7 @@ class TinecoDeviceClient:
                 self._initialized = True
                 return True
             else:
-                _LOGGER.error("Failed to login to Tineco API (Background attempt). Check logs.")
+                _LOGGER.error("Failed to login to Tineco API - invalid credentials")
                 return False
         except Exception as err:
             _LOGGER.error(f"Error during login: {err}", exc_info=True)
