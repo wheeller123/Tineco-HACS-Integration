@@ -32,18 +32,18 @@ Note: Ensure your Tineco device is powered on and connected to the app before ad
 2. Click the three dots menu → **Custom repositories**
 3. Add: `https://github.com/wheeller123/Tineco-HACS-Integration`
 4. Category: `Integration`
-5. Search for "Tineco IoT"
+5. Search for "Tineco"
 6. Click **Install**
 7. Restart Home Assistant
 8. Go to **Settings** → **Devices & Services** → **Add Integration**
-9. Search for "Tineco IoT" and configure
+9. Search for "Tineco" and configure
 
 ### Manual Installation
 
 1. Copy the `custom_components/tineco` folder to your Home Assistant `custom_components` directory
 2. Restart Home Assistant
 3. Go to **Settings** → **Devices & Services** → **Add Integration**
-4. Search for "Tineco IoT" and configure
+4. Search for "Tineco" and configure
 
 ## Configuration
 
@@ -51,7 +51,7 @@ Note: Ensure your Tineco device is powered on and connected to the app before ad
 
 1. In Home Assistant, go to **Settings** → **Devices & Services**
 2. Click **Create Integration** (+ button)
-3. Search for "Tineco IoT"
+3. Search for "Tineco"
 4. Enter your Tineco account email and password
 5. Click **Submit**
 
