@@ -1,162 +1,283 @@
-#!/usr/bin/env python3
 """
-Tineco IoT API Client - Complete implementation with CLI interface
-Combines TinecoClient library + Interactive device query tool
-Based on reverse-engineered code from Tineco Android app (IotUtils.java)
+Tineco IoT API Client Implementation.
 """
-
+import logging
 import requests
 import hashlib
 import time
-import json
+import uuid
 from typing import Dict, Optional, Tuple
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class TinecoNewDeviceException(Exception):
+    """Exception raised when new device verification is required."""
+
+    def __init__(self, verify_id):
+        self.verify_id = verify_id
 
 
 class TinecoClient:
-    """Tineco API client with automatic authSign calculation"""
-    
-    # Constants from decompiled BaseTinecoLifeApplication.java
+    """Tineco API client base implementation."""
+
     AUTH_APPKEY = "1538105560006"
     APP_SECRET = "fb7045ebb8ae5297bca45cbf5a5597ab"
-    
-    # Alternative auth constants for device list endpoint (from BaseUpLoadData.java)
+
+    # IoT / AuthCode constants
     AUTH_APPKEY_AUTHCODE = "1538103661113"
     APP_SECRET_AUTHCODE = "197472fcef3935ebc330657266992b99"
-    
-    # Default configuration
-    DEVICE_ID = "57938f751acc6897088c718770edcd00"
-    REGION = "IE"
-    LANGUAGE = "EN_US"
-    APP_VERSION = "1.7.0"
-    STORE = "google_play"
-    AUTH_TIMEZONE = "Europe/London"
-    
-    # API base
-    API_BASE = "https://qas-gl-{region}-api.tineco.com/v1/private/{region}/{language}/{device_id}/global_e/{version}/{store}/1"
-    
-    # Headers matching official app
-    DEFAULT_HEADERS = {
-        "User-Agent": "okhttp/5.3.2",
-        "Accept-Encoding": "gzip",
-        "Connection": "Keep-Alive"
-    }
-    
-    def __init__(self, region: str = REGION, language: str = LANGUAGE):
-        """Initialize Tineco client"""
+
+    def __init__(self, device_id: str = None, region: str = "IE", language: str = "EN_US"):
         self.region = region
         self.language = language
+
+        if device_id:
+            self.DEVICE_ID = device_id
+        else:
+            self.DEVICE_ID = "57938f751acc6897088c718770edcd00"
+
+        self.APP_VERSION = "1.7.0"
+        self.STORE = "google_play"
+        self.AUTH_TIMEZONE = "Europe/Warsaw"
+
         self.access_token = ""
         self.uid = ""
         self.auth_code = ""
         self.iot_token = ""
         self.iot_resource = ""
         self.device_list = []
+
         self.session = requests.Session()
-        self.session.headers.update(self.DEFAULT_HEADERS)
-        
-        # IoT API endpoints
+        self.session.headers.update({
+            "User-Agent": "okhttp/3.12.0",
+            "Connection": "Keep-Alive"
+        })
         self.IOT_API_BASE = "https://api-ngiot.dc-eu.ww.ecouser.net/api/iot/endpoint/control"
         self.IOT_LOGIN_ENDPOINT = "https://api-base.dc-eu.ww.ecouser.net/api/users/user.do"
-    
+
+    @staticmethod
+    def generate_valid_device_id():
+        """Generates a random device ID in MD5 format (32 hex chars)."""
+        random_uuid = uuid.uuid4().hex
+        return hashlib.md5(random_uuid.encode('utf-8')).hexdigest()
+
     def _md5_hash(self, text: str) -> str:
-        """Calculate MD5 hash"""
         return hashlib.md5(text.encode('utf-8')).hexdigest()
-    
-    def _calculate_auth_sign(self, custom_params: Dict[str, str],  
-                            timestamp: int, uid: str = "", 
-                            access_token: str = "") -> str:
-        """Calculate authSign using reverse-engineered algorithm"""
-        params = [
-            f"authTimespan={timestamp}",
-            f"authTimeZone={self.AUTH_TIMEZONE}",
-            f"country={self.region}",
-            f"lang={self.language}",
-            "appCode=global_e",
-            f"appVersion={self.APP_VERSION}",
-            f"deviceId={self.DEVICE_ID}",
-            f"channel={self.STORE}",
-            "deviceType=1",
-            f"uid={uid}",
-            f"accessToken={access_token}"
-        ]
-        
-        for key, value in custom_params.items():
-            params.append(f"{key}={value}")
-        
-        params.sort()
-        auth_string = self.AUTH_APPKEY + "".join(params) + self.APP_SECRET
-        return self._md5_hash(auth_string)
-    
-    def login(self, email: str, password: str) -> Tuple[bool, Optional[str], Optional[str]]:
-        """Login to Tineco API with email and password"""
+
+    def _process_login_success(self, data_json):
+        d = data_json.get("data", data_json)
+        self.access_token = d.get("accessToken", "")
+        self.uid = d.get("uid", "")
+        _LOGGER.info(f"Login successful! UID: {self.uid}")
+        return True, self.access_token, self.uid
+
+    def login(self, email: str, password: str, request_code: bool = False) -> Tuple[bool, Optional[str], Optional[str]]:
+        """
+        Login method.
+        request_code=True -> Sends email if 10001 error occurs (Interactive mode).
+        request_code=False -> Just logs error (Background mode).
+        """
         try:
             timestamp = int(time.time() * 1000)
             password_md5 = self._md5_hash(password)
-            
-            custom_params = {
-                "account": email,
-                "password": password_md5
-            }
-            
-            auth_sign = self._calculate_auth_sign(custom_params, timestamp, uid="", access_token="")
-            
-            url = (f"https://qas-gl-{self.region.lower()}-api.tineco.com/v1/private/"
-                   f"{self.region}/{self.language}/{self.DEVICE_ID}/global_e/"
-                   f"{self.APP_VERSION}/{self.STORE}/1/user/login")
-            
+
+            sign_params = [
+                f"authTimespan={timestamp}",
+                f"authTimeZone={self.AUTH_TIMEZONE}",
+                f"country={self.region}",
+                f"lang={self.language}",
+                "appCode=global_e",
+                f"appVersion={self.APP_VERSION}",
+                f"deviceId={self.DEVICE_ID}",
+                f"channel={self.STORE}",
+                "deviceType=1",
+                "uid=",
+                "accessToken=",
+                f"account={email}",
+                f"password={password_md5}"
+            ]
+            sign_params.sort()
+            auth_string = self.AUTH_APPKEY + "".join(sign_params) + self.APP_SECRET
+            auth_sign = self._md5_hash(auth_string)
+
+            base_url = (f"https://qas-gl-{self.region.lower()}-api.tineco.com/v1/private/"
+                        f"{self.region}/{self.language}/{self.DEVICE_ID}/global_e/"
+                        f"{self.APP_VERSION}/{self.STORE}/1/user/login")
+
             query_params = {
-                "authAppkey": self.AUTH_APPKEY,
-                "authSign": auth_sign,
-                "authTimeZone": self.AUTH_TIMEZONE,
-                "authTimespan": timestamp,
-                "account": email,
-                "password": password_md5,
-                "uid": "",
-                "accessToken": ""
+                "authAppkey": self.AUTH_APPKEY, "authSign": auth_sign,
+                "authTimeZone": self.AUTH_TIMEZONE, "authTimespan": timestamp,
+                "account": email, "password": password_md5,
+                "uid": "", "accessToken": ""
             }
-            
-            print(f"[INFO] Logging in: {email}")
-            response = self.session.get(url, params=query_params, timeout=10)
-            
+
+            encoded_params = []
+            for k, v in query_params.items():
+                val_str = str(v)
+                val_encoded = (val_str.replace("%", "%25").replace(" ", "%20")
+                               .replace("+", "%2B").replace("/", "%2F").replace("&", "%26"))
+                encoded_params.append(f"{k}={val_encoded}")
+
+            full_url = f"{base_url}?{'&'.join(encoded_params)}"
+
+            response = self.session.get(full_url, timeout=10)
+
             if response.status_code == 200:
                 data = response.json()
-                code = data.get("code")
-                
+                code = str(data.get("code"))
+
                 if code == "0000":
-                    response_data = data.get("data", data)
-                    self.access_token = response_data.get("accessToken", "")
-                    self.uid = response_data.get("uid", "")
-                    user_id = self.uid
-                    username = response_data.get("userName", "")
-                    
-                    print("[OK] Login successful!")
-                    print(f"    User ID: {user_id}")
-                    print(f"    Username: {username}")
-                    return True, self.access_token, user_id
+                    return self._process_login_success(data)
+
+                elif code == "10001":
+                    _LOGGER.warning(f"Got 10001 (New Device). Interactive mode: {request_code}")
+
+                    if request_code:
+                        verify_id = self.send_email_verify_code(email)
+                        if verify_id:
+                            # This exception must be caught by config_flow
+                            raise TinecoNewDeviceException(verify_id)
+                        return False, None, None
+                    else:
+                        _LOGGER.error("New device verification required but running in background. Ignoring.")
+                        return False, None, None
                 else:
-                    msg = data.get("msg", "")
-                    print(f"[ERROR] Login failed: {msg} (Code: {code})")
+                    _LOGGER.error(f"Login failed. Code: {code}, Msg: {data.get('msg')}")
                     return False, None, None
             else:
-                print(f"[ERROR] HTTP Error: {response.status_code}")
+                _LOGGER.error(f"HTTP Error: {response.status_code}")
                 return False, None, None
-                
+
+        except TinecoNewDeviceException:
+            raise
         except Exception as e:
-            print(f"[ERROR] Error: {str(e)}")
+            _LOGGER.exception(f"Unexpected error in login: {e}")
             return False, None, None
-    
+
+    def send_email_verify_code(self, email: str) -> Optional[str]:
+        """Requests code and returns verifyId"""
+        endpoint = "/user/sendEmailVerifyCode"
+        timestamp = int(time.time() * 1000)
+        request_id = uuid.uuid4().hex
+
+        sign_params = [
+            f"authTimespan={timestamp}", f"authTimeZone={self.AUTH_TIMEZONE}",
+            f"country={self.region}", f"lang={self.language}",
+            "appCode=global_e", f"appVersion={self.APP_VERSION}",
+            f"deviceId={self.DEVICE_ID}", f"channel={self.STORE}",
+            "deviceType=1", f"requestId={request_id}",
+            f"email={email}", f"verifyType=EMAIL_NEW_DEVICE"
+        ]
+        sign_params.sort()
+        auth_string = self.AUTH_APPKEY + "".join(sign_params) + self.APP_SECRET
+        auth_sign = self._md5_hash(auth_string)
+
+        base_url = (f"https://qas-gl-{self.region.lower()}-api.tineco.com/v1/private/"
+                    f"{self.region}/{self.language}/{self.DEVICE_ID}/global_e/"
+                    f"{self.APP_VERSION}/{self.STORE}/1{endpoint}")
+
+        query_params = {
+            "authAppkey": self.AUTH_APPKEY, "authSign": auth_sign,
+            "authTimeZone": self.AUTH_TIMEZONE, "authTimespan": timestamp,
+            "requestId": request_id, "email": email, "verifyType": "EMAIL_NEW_DEVICE"
+        }
+
+        encoded_params = []
+        for k, v in query_params.items():
+            val_str = str(v)
+            val_encoded = (val_str.replace("%", "%25").replace(" ", "%20")
+                           .replace("+", "%2B").replace("/", "%2F").replace("&", "%26"))
+            encoded_params.append(f"{k}={val_encoded}")
+
+        full_url = f"{base_url}?{'&'.join(encoded_params)}"
+
+        try:
+            resp = self.session.get(full_url)
+            js = resp.json()
+            if str(js.get("code")) == "0000":
+                v_id = js.get("data", {}).get("verifyId")
+                _LOGGER.debug(f"Code sent. VerifyID: {v_id}")
+                return v_id
+            else:
+                _LOGGER.error(f"Failed to send code: {js}")
+                return None
+        except Exception as e:
+            _LOGGER.error(f"Network error in send_email_verify_code: {e}")
+            return None
+
+    def quick_login_by_email(self, email: str, verify_id: str, verify_code: str) -> Tuple[
+        bool, Optional[str], Optional[str]]:
+        """Finalize login with OTP."""
+        endpoint = "/user/quickLoginByEmail"
+        timestamp = int(time.time() * 1000)
+        request_id = uuid.uuid4().hex
+
+        sign_params = [
+            f"authTimespan={timestamp}", f"authTimeZone={self.AUTH_TIMEZONE}",
+            f"country={self.region}", f"lang={self.language}",
+            "appCode=global_e", f"appVersion={self.APP_VERSION}",
+            f"deviceId={self.DEVICE_ID}", f"channel={self.STORE}",
+            "deviceType=1", f"requestId={request_id}",
+            f"email={email}", f"verifyId={verify_id}", f"verifyCode={verify_code}"
+        ]
+        sign_params.sort()
+        auth_string = self.AUTH_APPKEY + "".join(sign_params) + self.APP_SECRET
+        auth_sign = self._md5_hash(auth_string)
+
+        base_url = (f"https://qas-gl-{self.region.lower()}-api.tineco.com/v1/private/"
+                    f"{self.region}/{self.language}/{self.DEVICE_ID}/global_e/"
+                    f"{self.APP_VERSION}/{self.STORE}/1{endpoint}")
+
+        query_params = {
+            "authAppkey": self.AUTH_APPKEY, "authSign": auth_sign,
+            "authTimeZone": self.AUTH_TIMEZONE, "authTimespan": timestamp,
+            "requestId": request_id, "email": email,
+            "verifyId": verify_id, "verifyCode": verify_code
+        }
+
+        encoded_params = []
+        for k, v in query_params.items():
+            if v is None: v = ""
+            val_str = str(v)
+            val_encoded = (val_str.replace("%", "%25").replace(" ", "%20")
+                           .replace("+", "%2B").replace("/", "%2F").replace("&", "%26"))
+            encoded_params.append(f"{k}={val_encoded}")
+
+        full_url = f"{base_url}?{'&'.join(encoded_params)}"
+
+        try:
+            resp = self.session.get(full_url)
+            js = resp.json()
+            if str(js.get("code")) == "0000":
+                return self._process_login_success(js)
+            else:
+                _LOGGER.error(f"OTP verification failed. Msg: {js.get('msg')}")
+                return False, None, None
+        except Exception as e:
+            _LOGGER.error(f"Network error in quick_login_by_email: {e}")
+            return False, None, None
+
+    def _process_login_success(self, data_json):
+        """Helper function to extract data after success"""
+        d = data_json.get("data", data_json)
+        self.access_token = d.get("accessToken", "")
+        self.uid = d.get("uid", "")
+        print(f"[SUCCESS] Logged in! UID: {self.uid}")
+        return True, self.access_token, self.uid
+
     def _get_auth_code(self) -> bool:
         """Get authCode from /global/auth/getAuthCode endpoint"""
         if not self.uid or not self.access_token:
             print("[ERROR] REST login required before getting authCode")
             return False
-        
+
         try:
             url = (f"https://qas-gl-{self.region.lower()}-openapi.tineco.com/v1/"
                    f"global/auth/getAuthCode")
-            
+
             timestamp = int(time.time() * 1000)
-            
+
             params_list = [
                 f"authTimespan={timestamp}",
                 "appCode=global_e",
@@ -166,11 +287,11 @@ class TinecoClient:
                 f"accessToken={self.access_token}",
                 f"deviceId={self.DEVICE_ID}"
             ]
-            
+
             params_list.sort()
             auth_string = self.AUTH_APPKEY_AUTHCODE + "".join(params_list) + self.APP_SECRET_AUTHCODE
             auth_sign = self._md5_hash(auth_string)
-            
+
             query_params = {
                 "authAppkey": self.AUTH_APPKEY_AUTHCODE,
                 "authSign": auth_sign,
@@ -181,25 +302,25 @@ class TinecoClient:
                 "appVersion": self.APP_VERSION,
                 "authTimespan": timestamp
             }
-            
+
             print("[INFO] Getting authCode...")
             response = self.session.get(url, params=query_params, timeout=10)
-            
+
             if response.status_code == 200:
                 data = response.json()
                 code = data.get("code")
-                
+
                 if code == "0000" or code == 0:
                     auth_code_data = data.get("data", data)
                     if isinstance(auth_code_data, dict):
                         self.auth_code = auth_code_data.get("authCode", "")
                     else:
                         self.auth_code = auth_code_data if isinstance(auth_code_data, str) else ""
-                    
+
                     if not self.auth_code:
                         print("[ERROR] authCode not in response")
                         return False
-                    
+
                     print("[OK] Got authCode!")
                     print(f"    authCode: {self.auth_code[:20]}...")
                     return True
@@ -209,21 +330,21 @@ class TinecoClient:
             else:
                 print(f"[ERROR] HTTP Error: {response.status_code}")
                 return False
-                
+
         except Exception as e:
             print(f"[ERROR] Error getting authCode: {str(e)}")
             return False
-    
+
     def _iot_login(self) -> bool:
         """Login to IoT service to get token and resource for device list API"""
         if not self.uid or not self.auth_code:
             print("[ERROR] REST login and authCode required before IoT login")
             return False
-        
+
         try:
             import uuid
             device_uuid = str(uuid.uuid4())
-            
+
             payload = {
                 "todo": "loginByItToken",
                 "userId": self.uid,
@@ -235,21 +356,21 @@ class TinecoClient:
                 "country": self.region,
                 "org": "TEKWW"
             }
-            
+
             print("[INFO] Performing IoT login...")
             response = self.session.post(self.IOT_LOGIN_ENDPOINT, json=payload, timeout=10)
-            
+
             if response.status_code == 200:
                 data = response.json()
                 result = data.get("result", "")
-                
+
                 if result == "ok":
                     self.iot_token = data.get("token", "")
                     self.iot_resource = data.get("resource", device_uuid)
-                    
+
                     if "userId" in data:
                         self.uid = data.get("userId")
-                    
+
                     print("[OK] IoT login successful!")
                     print(f"    IoT Token: {self.iot_token[:20]}...")
                     print(f"    IoT Resource: {self.iot_resource}")
@@ -261,35 +382,35 @@ class TinecoClient:
             else:
                 print(f"[ERROR] IoT login HTTP error: {response.status_code}")
                 return False
-                
+
         except Exception as e:
             print(f"[ERROR] IoT login error: {str(e)}")
             return False
-    
+
     def get_devices(self) -> Optional[Dict]:
         """Get list of devices for the logged-in user"""
         if not self.access_token or not self.uid:
             print("[ERROR] Not logged in. Call login() first.")
             return None
-        
+
         if not self.auth_code:
             print("[INFO] Getting authCode for device access...")
             if not self._get_auth_code():
                 print("[ERROR] Failed to get authCode")
                 return None
-        
+
         if not self.iot_token:
             print("[INFO] Performing IoT login to get device credentials...")
             if not self._iot_login():
                 print("[ERROR] IoT login failed, cannot get device list")
                 return None
-        
+
         try:
             url = (f"https://qas-gl-{self.region.lower()}-openapi.tineco.com/v1/"
                    f"global/device/getDeviceListV2")
-            
+
             timestamp = int(time.time() * 1000)
-            
+
             params_list = [
                 f"authTimespan={timestamp}",
                 f"lang={self.language}",
@@ -305,11 +426,11 @@ class TinecoClient:
                 "deviceType=1",
                 "refresh=false"
             ]
-            
+
             params_list.sort()
             auth_string = self.AUTH_APPKEY_AUTHCODE + "".join(params_list) + self.APP_SECRET_AUTHCODE
             auth_sign = self._md5_hash(auth_string)
-            
+
             query_params = {
                 "authAppkey": self.AUTH_APPKEY_AUTHCODE,
                 "authSign": auth_sign,
@@ -326,10 +447,10 @@ class TinecoClient:
                 "deviceType": "1",
                 "refresh": "false"
             }
-            
+
             print("[INFO] Fetching device list...")
             response = self.session.get(url, params=query_params, timeout=10)
-            
+
             if response.status_code == 200:
                 data = response.json()
                 if data.get("code") == "0000" or data.get("code") == 0:
@@ -338,7 +459,7 @@ class TinecoClient:
                         self.device_list = payload.get("deviceList", payload.get("userDeviceList", []))
                     else:
                         self.device_list = payload if isinstance(payload, list) else []
-                    
+
                     print(f"[OK] Found {len(self.device_list)} device(s)")
                     for device in self.device_list:
                         device_name = device.get('deviceName', device.get('name', 'Unknown'))
@@ -351,26 +472,26 @@ class TinecoClient:
             else:
                 print(f"[ERROR] HTTP Error: {response.status_code}")
                 return None
-                
+
         except Exception as e:
             print(f"[ERROR] Error getting devices: {str(e)}")
             return None
-    
-    def get_device_status(self, device_id: str, device_class: str = "", 
-                         device_resource: str = "", session_id: str = "") -> Optional[Dict]:
+
+    def get_device_status(self, device_id: str, device_class: str = "",
+                          device_resource: str = "", session_id: str = "") -> Optional[Dict]:
         """Get device status from IoT API"""
         if not self.access_token:
             print("[ERROR] Not logged in. Call login() first.")
             return None
-        
+
         try:
             import random
             import string
-            
+
             if not session_id:
                 chars = string.ascii_letters + string.digits
                 session_id = ''.join(random.choice(chars) for _ in range(16))
-            
+
             params = {
                 "ct": "q",
                 "eid": device_id,
@@ -378,22 +499,22 @@ class TinecoClient:
                 "apn": "QueryMode",
                 "si": session_id
             }
-            
+
             if device_class:
                 params["et"] = device_class
             if device_resource:
                 params["er"] = device_resource
-            
+
             headers = {
                 "Authorization": f"Bearer {self.iot_token if self.iot_token else self.access_token}",
                 "X-ECO-REQUEST-ID": session_id
             }
-            
+
             print(f"[INFO] Querying device {device_id}...")
             response = self.session.post(self.IOT_API_BASE, params=params, headers=headers, timeout=10)
-            
+
             ngiot_ret = response.headers.get("X-NGIOT-RET", "")
-            
+
             if response.status_code == 200:
                 if ngiot_ret == "ok":
                     print("[OK] IoT endpoint returned success")
@@ -408,7 +529,8 @@ class TinecoClient:
                     if response.text:
                         try:
                             data = response.json()
-                            if isinstance(data, dict) and ("code" in data and data.get("code") == "0000" or "payload" in data):
+                            if isinstance(data, dict) and (
+                                    "code" in data and data.get("code") == "0000" or "payload" in data):
                                 print("[OK] Device status retrieved successfully")
                                 return data
                         except Exception:
@@ -417,27 +539,27 @@ class TinecoClient:
             else:
                 print(f"[ERROR] HTTP Error: {response.status_code}")
                 return None
-                
+
         except Exception as e:
             print(f"[ERROR] Error getting device status: {str(e)}")
             return None
-    
-    def _send_iot_query(self, device_id: str, action: str, 
+
+    def _send_iot_query(self, device_id: str, action: str,
                         device_class: str = "", device_resource: str = "",
                         session_id: str = "") -> Optional[Dict]:
         """Internal method to send IoT query actions"""
         if not self.access_token:
             print("[ERROR] Not logged in. Call login() first.")
             return None
-        
+
         try:
             import random
             import string
-            
+
             if not session_id:
                 chars = string.ascii_letters + string.digits
                 session_id = ''.join(random.choice(chars) for _ in range(16))
-            
+
             params = {
                 "ct": "q",
                 "eid": device_id,
@@ -445,23 +567,23 @@ class TinecoClient:
                 "apn": action,
                 "si": session_id
             }
-            
+
             if device_class:
                 params["et"] = device_class
             if device_resource:
                 params["er"] = device_resource
-            
+
             headers = {
                 "Authorization": f"Bearer {self.iot_token if self.iot_token else self.access_token}",
                 "X-ECO-REQUEST-ID": session_id
             }
-            
+
             print(f"[INFO] Querying device with action: {action}")
             response = self.session.post(self.IOT_API_BASE, params=params, headers=headers, timeout=10)
-            
+
             if response.status_code == 200:
                 ngiot_ret = response.headers.get("X-NGIOT-RET", "")
-                
+
                 if ngiot_ret == "ok":
                     print(f"[OK] Action '{action}' successful")
                     if response.text:
@@ -477,91 +599,92 @@ class TinecoClient:
             else:
                 print(f"[ERROR] HTTP Error: {response.status_code}")
                 return None
-                
+
         except Exception as e:
             print(f"[ERROR] Error in query: {str(e)}")
             return None
-    
+
     def get_controller_info(self, device_id: str, device_class: str = "",
-                           device_resource: str = "") -> Optional[Dict]:
+                            device_resource: str = "") -> Optional[Dict]:
         """Get controller information (GCI - Get Controller Info)"""
         return self._send_iot_query(device_id, "gci", device_class, device_resource)
-    
+
     def get_api_version(self, device_id: str, device_class: str = "",
-                       device_resource: str = "") -> Optional[Dict]:
+                        device_resource: str = "") -> Optional[Dict]:
         """Get API version (GAV - Get API Version)"""
         return self._send_iot_query(device_id, "gav", device_class, device_resource)
-    
+
     def get_config_file(self, device_id: str, device_class: str = "",
-                       device_resource: str = "") -> Optional[Dict]:
+                        device_resource: str = "") -> Optional[Dict]:
         """Get configuration file (GCF - Get Config File)"""
         return self._send_iot_query(device_id, "gcf", device_class, device_resource)
-    
+
     def get_device_config_point(self, device_id: str, device_class: str = "",
-                               device_resource: str = "") -> Optional[Dict]:
+                                device_resource: str = "") -> Optional[Dict]:
         """Get config point (CFP - Config File Point)"""
         return self._send_iot_query(device_id, "cfp", device_class, device_resource)
-    
+
     def query_device_mode(self, device_id: str, device_class: str = "",
-                         device_resource: str = "") -> Optional[Dict]:
+                          device_resource: str = "") -> Optional[Dict]:
         """Query device operating mode (QueryMode)"""
         return self._send_iot_query(device_id, "QueryMode", device_class, device_resource)
-    
+
     def get_complete_device_info(self, device_id: str, device_class: str = "",
-                                device_resource: str = "") -> Dict:
+                                 device_resource: str = "") -> Dict:
         """Get complete device information by querying all available endpoints"""
         print(f"\n[INFO] Retrieving complete device information for {device_id}...")
-        
+
         info = {}
-        
+
         try:
             print("[INFO] Getting controller info (GCI)...")
             gci = self.get_controller_info(device_id, device_class, device_resource)
             if gci:
                 info['gci'] = gci
-            
+
             print("[INFO] Getting API version (GAV)...")
             gav = self.get_api_version(device_id, device_class, device_resource)
             if gav:
                 info['gav'] = gav
-            
+
             print("[INFO] Getting config file (GCF)...")
             gcf = self.get_config_file(device_id, device_class, device_resource)
             if gcf:
                 info['gcf'] = gcf
-            
+
             print("[INFO] Getting config point (CFP)...")
             cfp = self.get_device_config_point(device_id, device_class, device_resource)
             if cfp:
                 info['cfp'] = cfp
-            
+
             print("[INFO] Getting device modes (QueryMode)...")
             query_mode = self.query_device_mode(device_id, device_class, device_resource)
             if query_mode:
                 info['query_mode'] = query_mode
-            
+
             print(f"[OK] Retrieved {len(info)} information sources")
             return info
-            
+
         except Exception as e:
             print(f"[ERROR] Error retrieving complete device info: {str(e)}")
             return info
-    
-    def control_device(self, device_id: str, command: Dict, 
-                      device_sn: str = "", device_class: str = "", session_id: str = "", action: str = "cfp") -> Optional[Dict]:
+
+    def control_device(self, device_id: str, command: Dict,
+                       device_sn: str = "", device_class: str = "", session_id: str = "", action: str = "cfp") -> \
+            Optional[Dict]:
         """Send control command to device via IoT API"""
         if not self.access_token:
             print("[ERROR] Not logged in. Call login() first.")
             return None
-        
+
         try:
             import random
             import string
-            
+
             if not session_id:
                 chars = string.ascii_letters + string.digits
                 session_id = ''.join(random.choice(chars) for _ in range(16))
-            
+
             params = {
                 "ct": "q",
                 "eid": device_id,
@@ -569,42 +692,42 @@ class TinecoClient:
                 "apn": action,
                 "si": session_id
             }
-            
+
             if device_class:
                 params["et"] = device_class
             if device_sn:
                 params["er"] = device_sn
-            
+
             headers = {
                 "Authorization": f"Bearer {self.iot_token if self.iot_token else self.access_token}",
                 "X-ECO-REQUEST-ID": session_id
             }
-            
+
             print(f"[INFO] Sending command to device {device_id}...")
             print(f"[DEBUG] Base URL: {self.IOT_API_BASE}")
             print(f"[DEBUG] Query Params: {params}")
-            
+
             # Construct full URL for display
             from urllib.parse import urlencode
             full_url = f"{self.IOT_API_BASE}?{urlencode(params)}"
             print(f"[DEBUG] Full URL: {full_url}")
-            
+
             print(f"[DEBUG] Headers: {headers}")
             print(f"[DEBUG] JSON Body: {command}")
-            
+
             response = self.session.post(self.IOT_API_BASE, params=params, headers=headers, json=command, timeout=10)
-            
+
             print(f"[DEBUG] Response status: {response.status_code}")
             print(f"[DEBUG] Response headers: {dict(response.headers)}")
             print(f"[DEBUG] Response body: '{response.text}'")
-            
+
             if response.status_code == 200:
                 ngiot_ret = response.headers.get("X-NGIOT-RET", "")
                 ngiot_fmt = response.headers.get("X-Ngiot-Fmt", "")
-                
+
                 print(f"[DEBUG] X-NGIOT-RET: {ngiot_ret}")
                 print(f"[DEBUG] X-Ngiot-Fmt: {ngiot_fmt}")
-                
+
                 if ngiot_ret == "ok":
                     print("[OK] Command sent successfully")
                     if response.text and response.text.strip():
@@ -628,7 +751,7 @@ class TinecoClient:
                 print(f"[ERROR] HTTP Error: {response.status_code}")
                 print(f"[ERROR] Response body: {response.text}")
                 return None
-                
+
         except Exception as e:
             print(f"[ERROR] Error sending command: {str(e)}")
             import traceback
@@ -653,72 +776,72 @@ def main():
     print("Tineco Device Information Retrieval")
     print("=" * 80)
     print()
-    
+
     client = TinecoClient()
-    
+
     # Step 1: Authentication
     print("[STEP 1] Authentication")
     print("-" * 80)
-    
+
     email = input("Enter email: ").strip()
     password = input("Enter password: ").strip()
-    
+
     success, token, user_id = client.login(email, password)
-    
+
     if not success:
         print("[ERROR] Login failed!")
         return 1
-    
+
     print("[OK] Login successful!")
     print(f"    User ID: {user_id}")
     print()
-    
+
     # Step 2: Get devices
     print("[STEP 2] Get Devices")
     print("-" * 80)
-    
+
     devices = client.get_devices()
-    
+
     if not devices or not client.device_list:
         print("[ERROR] No devices found!")
         return 1
-    
+
     print(f"[OK] Found {len(client.device_list)} device(s)")
-    
+
     for i, device in enumerate(client.device_list, 1):
         name = device.get('nick') or device.get('deviceName', 'Unknown')
         device_id = device.get('did') or device.get('deviceId')
         print(f"    {i}. {name} ({device_id})")
-    
+
     print()
-    
+
     # Step 3: Select device
     print("[STEP 3] Select Device")
     print("-" * 80)
-    
+
     if len(client.device_list) == 1:
         device = client.device_list[0]
         print(f"[->] Using device: {device.get('nick') or device.get('deviceName')}")
     else:
         idx = int(input(f"Enter device number (1-{len(client.device_list)}): ")) - 1
         device = client.device_list[idx]
-    
+
     device_id = device.get('did') or device.get('deviceId')
     device_class = device.get('className', '')
     device_resource = device.get('resource', '')
     device_name = device.get('nick') or device.get('deviceName', 'Unknown')
-    
+
     print(f"[OK] Selected: {device_name}")
     print(f"    ID: {device_id}")
     print(f"    Class: {device_class}")
     print(f"    Resource: {device_resource}")
     print()
-    
+
     # Step 4: Query all device information
     print("[STEP 4] Query Device Information")
     print("-" * 80)
     print()
-    
+
     print("[GCI] Get Controller Info")
     print("    Retrieves: Firmware version, hardware info, device capabilities")
     gci = client.get_controller_info(device_id, device_class, device_resource)
@@ -728,7 +851,7 @@ def main():
     else:
         print("[ERROR] Failed to retrieve")
     print()
-    
+
     print("[GAV] Get API Version")
     print("    Retrieves: Device API version support")
     gav = client.get_api_version(device_id, device_class, device_resource)
@@ -738,7 +861,7 @@ def main():
     else:
         print("[ERROR] Failed to retrieve")
     print()
-    
+
     print("[GCF] Get Config File")
     print("    Retrieves: Device configuration settings")
     gcf = client.get_config_file(device_id, device_class, device_resource)
@@ -748,7 +871,7 @@ def main():
     else:
         print("[ERROR] Failed to retrieve")
     print()
-    
+
     print("[CFP] Get Config Point")
     print("    Retrieves: Specific configuration point data")
     cfp = client.get_device_config_point(device_id, device_class, device_resource)
@@ -758,7 +881,7 @@ def main():
     else:
         print("[ERROR] Failed to retrieve")
     print()
-    
+
     print("[QueryMode] Get Device Modes")
     print("    Retrieves: Current and available device modes")
     modes = client.query_device_mode(device_id, device_class, device_resource)
@@ -768,15 +891,15 @@ def main():
     else:
         print("[ERROR] Failed to retrieve")
     print()
-    
+
     # Step 5: Complete Device Information
     print("[STEP 5] Complete Device Information")
     print("-" * 80)
     print()
-    
+
     print("Retrieving complete device information (all queries at once)...")
     complete_info = client.get_complete_device_info(device_id, device_class, device_resource)
-    
+
     print(f"\n[OK] Retrieved information from {len(complete_info)} endpoints:")
     for key, value in complete_info.items():
         if value:
@@ -784,17 +907,18 @@ def main():
             print(f"    [OK] {key.upper():15} - {size:,} bytes")
         else:
             print(f"    [ERROR] {key.upper():15} - Failed")
-    
+
     print()
     print("=" * 80)
     print("Device information retrieval complete!")
     print("=" * 80)
-    
+
     return 0
 
 
 if __name__ == "__main__":
     import sys
+
     try:
         sys.exit(main())
     except KeyboardInterrupt:
@@ -803,5 +927,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n[ERROR] Unexpected error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
