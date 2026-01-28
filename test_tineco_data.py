@@ -35,7 +35,7 @@ def test_tineco_data():
     
     # Get device list
     print("\n[2/4] Getting device list...")
-    devices = client.get_devices()
+    client.get_devices()
     if not client.device_list:
         print("❌ No devices found!")
         return
@@ -217,7 +217,7 @@ def test_tineco_data():
     result = client.control_device(device_id, command, device_resource, device_class)
     
     if result:
-        print(f"\n✅ Command sent successfully!")
+        print("\n✅ Command sent successfully!")
         print(f"   Response: {json.dumps(result, indent=2)}")
         
         # Wait and check new state
@@ -237,7 +237,7 @@ def test_tineco_data():
                         state = "ON (Unmuted)" if vl_value == 1 else "OFF (Muted)"
                         print(f"    {endpoint_key}.vl: {vl_value} → {state}")
     else:
-        print(f"\n❌ Command failed - no response received")
+        print("\n❌ Command failed - no response received")
     print("\n" + "="*80)
     print("TEST COMPLETE")
     print("="*80)

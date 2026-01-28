@@ -57,7 +57,8 @@ class TinecoDeviceClient:
             return False
 
     async def async_get_devices(self) -> Optional[List[Dict]]:
-        if not self._initialized or not self.client: return None
+        if not self._initialized or not self.client:
+            return None
         try:
             loop = asyncio.get_event_loop()
             devices_response = await loop.run_in_executor(None, self.client.get_devices)
@@ -70,7 +71,8 @@ class TinecoDeviceClient:
             return None
 
     async def async_get_device_info(self, device_id: str, device_class: str = "", device_resource: str = "") -> Optional[Dict]:
-        if not self._initialized or not self.client: return None
+        if not self._initialized or not self.client:
+            return None
         try:
             loop = asyncio.get_event_loop()
             info = await loop.run_in_executor(None, lambda: self.client.get_complete_device_info(device_id, device_class, device_resource))

@@ -1,6 +1,7 @@
 """
 Tineco IoT API Client Implementation.
 """
+import json
 import logging
 import requests
 import hashlib
@@ -167,7 +168,7 @@ class TinecoClient:
             "appCode=global_e", f"appVersion={self.APP_VERSION}",
             f"deviceId={self.DEVICE_ID}", f"channel={self.STORE}",
             "deviceType=1", f"requestId={request_id}",
-            f"email={email}", f"verifyType=EMAIL_NEW_DEVICE"
+            f"email={email}", "verifyType=EMAIL_NEW_DEVICE"
         ]
         sign_params.sort()
         auth_string = self.AUTH_APPKEY + "".join(sign_params) + self.APP_SECRET
@@ -238,7 +239,8 @@ class TinecoClient:
 
         encoded_params = []
         for k, v in query_params.items():
-            if v is None: v = ""
+            if v is None:
+                v = ""
             val_str = str(v)
             val_encoded = (val_str.replace("%", "%25").replace(" ", "%20")
                            .replace("+", "%2B").replace("/", "%2F").replace("&", "%26"))

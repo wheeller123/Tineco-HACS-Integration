@@ -4,11 +4,6 @@ import logging
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.helpers.selector import (
-    SelectSelector,
-    SelectSelectorConfig,
-    SelectSelectorMode,
-)
 
 from .const import DOMAIN
 from .tineco_client_impl import TinecoClient, TinecoNewDeviceException
