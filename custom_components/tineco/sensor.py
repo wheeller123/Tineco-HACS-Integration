@@ -341,37 +341,52 @@ class TinecoVacuumStatusSensor(TinecoBaseSensor):
                     result.update(extract_values(item, target_keys))
             return result
         
-        # Extract relevant fields
-        fields = extract_values(payload, ["wm", "msr", "selfclean_process", "selfclean_progress", "station", "sta"])
+        # Extract relevant fields for status detection
+        # wm: work mode (8 = self-cleaning)
+        # scm: self-clean mode
+        # scs: self-clean state  
+        # scst: self-clean sub-state
+        # selfclean_process: self-clean process indicator
+        # station: station status
+        fields = extract_values(payload, ["wm", "msr", "selfclean_process", "selfclean_progress", "station", "sta", "scm", "scs", "scst"])
         
         wm = fields.get("wm")
-        msr = fields.get("msr")
         selfclean_process = fields.get("selfclean_process")
         station = fields.get("station")
+        scm = fields.get("scm")
+        scs = fields.get("scs")
+        scst = fields.get("scst")
         
-        # Priority 1: Check msr=0 AND wm=8 (self-cleaning in dock)
-        # msr can stay 0 after cleaning, so must also check wm=8
-        if msr is not None and int(msr) == 0 and wm is not None and int(wm) == 8:
-            return "self_cleaning"
-        
-        # Priority 2: Check if self-cleaning (selfclean_process > 0)
-        if selfclean_process is not None and int(selfclean_process) > 0:
-            return "self_cleaning"
-        
-        # Priority 2: Check if self-cleaning (selfclean_process > 0)
-        if selfclean_process is not None and int(selfclean_process) > 0:
-            return "self_cleaning"
-        
-        # Priority 3: Check work mode (wm field)
+        # Priority 1: Check work mode 8 (wm=8 = self-cleaning)
+        # This is the primary indicator used by the Tineco app
         if wm is not None:
             try:
                 work_mode = int(wm)
-                # wm=3 or wm=4: In operation (actively cleaning)
-                if work_mode in (3, 4):
-                    return "in_operation"
-                # wm=0,1,2,8,10: Idle (standby, charging, or docked)
-                else:
-                    return "idle"
+                if work_mode == 8:
+                    return "self_cleaning"
+            except (ValueError, TypeError):
+                pass
+        
+        # Priority 2: Check if self-cleaning via selfclean_process > 0
+        if selfclean_process is not None:
+            try:
+                if int(selfclean_process) > 0:
+                    return "self_cleaning"
+            except (ValueError, TypeError):
+                pass
+        
+        # Priority 3: Check self-clean mode (scm) or self-clean state (scs)
+        if scm is not None:
+            try:
+                if int(scm) > 0:
+                    return "self_cleaning"
+            except (ValueError, TypeError):
+                pass
+        
+        if scs is not None:
+            try:
+                if int(scs) > 0:
+                    return "self_cleaning"
             except (ValueError, TypeError):
                 pass
         
@@ -382,6 +397,19 @@ class TinecoVacuumStatusSensor(TinecoBaseSensor):
                 # station=1: In self-clean mode
                 if station_val == 1:
                     return "self_cleaning"
+            except (ValueError, TypeError):
+                pass
+        
+        # Priority 5: Check work mode for in_operation vs idle
+        if wm is not None:
+            try:
+                work_mode = int(wm)
+                # wm=3 or wm=4: In operation (actively cleaning)
+                if work_mode in (3, 4):
+                    return "in_operation"
+                # wm=0,1,2,10, etc.: Idle (standby, charging, or docked)
+                else:
+                    return "idle"
             except (ValueError, TypeError):
                 pass
         
