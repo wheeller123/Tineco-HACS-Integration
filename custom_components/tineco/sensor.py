@@ -345,17 +345,15 @@ class TinecoVacuumStatusSensor(TinecoBaseSensor):
         # wm: work mode (8 = self-cleaning)
         # scm: self-clean mode
         # scs: self-clean state  
-        # scst: self-clean sub-state
         # selfclean_process: self-clean process indicator
         # station: station status
-        fields = extract_values(payload, ["wm", "msr", "selfclean_process", "selfclean_progress", "station", "sta", "scm", "scs", "scst"])
+        fields = extract_values(payload, ["wm", "selfclean_process", "station", "scm", "scs"])
         
         wm = fields.get("wm")
         selfclean_process = fields.get("selfclean_process")
         station = fields.get("station")
         scm = fields.get("scm")
         scs = fields.get("scs")
-        scst = fields.get("scst")
         
         # Priority 1: Check work mode 8 (wm=8 = self-cleaning)
         # This is the primary indicator used by the Tineco app
