@@ -14,12 +14,22 @@ Control your Tineco smart devices through Home Assistant using this custom integ
   - Waste water tank status (clean/full)
   - Fresh water tank status (empty/full)
 - **Switch Controls**:
-  - Sound on/off (mute/unmute)
+  - Sound: Enabled (mute/unmute)
+  - Water Mode: Enabled (enable/disable water-only mode)
+  - Floor Brush Light on/off
 - **Select Controls**:
-  - Volume level (Low, Medium, High)
+  - Sound: Volume Level (Low, Medium, High)
+  - Suction Mode: Power (120W, 150W)
+  - MAX Mode: Power (120W, 150W)
+  - MAX Mode: Spray Volume (Rinse, Max)
+  - Water Mode: Power (90W, 120W, 150W) - *disabled when Water Mode is off*
+  - Water Mode: Spray Volume (Mist, Wet, Medium, Rinse, Max) - *disabled when Water Mode is off*
 - **Binary Sensors**:
   - Online status
   - Charging status
+- **Smart Controls**:
+  - Water Mode controls are automatically disabled (greyed out) when Water Mode is turned off
+  - Grouped entity naming for easy organization
 - **Configuration UI**: Easy setup through Home Assistant UI
 - **Multi-language Support**: English and Spanish
 
@@ -65,18 +75,33 @@ Once configured, the integration will create the following entities:
 - `sensor.tineco_model` - Device model (e.g., S7 Flashdry)
 - `sensor.tineco_battery` - Battery level percentage
 - `sensor.tineco_vacuum_status` - Current vacuum status (idle, in_operation, self_cleaning, docked_standby)
-- `sensor.waste_water_tank_status` - Waste water tank status (clean/full)
-- `sensor.fresh_water_tank_status` - Fresh water tank status (empty/full)
+- `sensor.tineco_waste_water_tank_status` - Waste water tank status (clean/full)
+- `sensor.tineco_fresh_water_tank_status` - Fresh water tank status (empty/full)
 
 ### Switches
-- `switch.tineco_sound` - Sound on/off (mute/unmute control)
+- `switch.tineco_sound_enabled` - Sound on/off (mute/unmute control)
+- `switch.tineco_water_mode_enabled` - Water-only mode on/off
+- `switch.tineco_floor_brush_light` - Floor brush light on/off
 
 ### Selects
-- `select.tineco_volume_level` - Volume level selection (Low, Medium, High)
+- `select.tineco_sound_volume_level` - Volume level selection (Low, Medium, High)
+- `select.tineco_suction_mode_power` - Suction mode power (120W, 150W)
+- `select.tineco_max_mode_power` - MAX mode power (120W, 150W)
+- `select.tineco_max_mode_spray_volume` - MAX mode spray volume (Rinse, Max)
+- `select.tineco_water_mode_power` - Water mode power (90W, 120W, 150W) - *unavailable when water mode is off*
+- `select.tineco_water_mode_spray_volume` - Water mode spray volume (Mist, Wet, Medium, Rinse, Max) - *unavailable when water mode is off*
 
 ### Binary Sensors
 - `binary_sensor.tineco_online` - Device online status
 - `binary_sensor.tineco_charging` - Charging status
+
+### Entity Grouping
+
+Entities are named with prefixes for easy grouping in the UI:
+- **Sound**: `Tineco Sound: Enabled`, `Tineco Sound: Volume Level`
+- **Suction Mode**: `Tineco Suction Mode: Power`
+- **MAX Mode**: `Tineco MAX Mode: Power`, `Tineco MAX Mode: Spray Volume`
+- **Water Mode**: `Tineco Water Mode: Enabled`, `Tineco Water Mode: Power`, `Tineco Water Mode: Spray Volume`
 
 ### Automation Examples
 
@@ -154,7 +179,18 @@ This integration uses the following device queries:
 - **GAV** (Get API Version) - Firmware version information
 - **GCF** (Get Config File) - Device configuration
 - **CFP** (Get Config Point) - Configuration points including status data
-- **QueryMode** - Device operating modes
+- **QueryMode** - Query current device mode configuration
+- **UpdateMode** - Update mode settings (suction power, MAX mode, water mode)
+- **DeleteMode** - Delete/disable a mode (e.g., disable water-only mode)
+
+### Mode Commands
+
+The integration sends coordinated mode commands when changing mode settings:
+
+1. **UpdateMode** - Suction mode (md=4) with power setting
+2. **UpdateMode** - MAX mode (md=3) with power and spray settings
+3. **UpdateMode/DeleteMode** - Water mode (md=6) - UpdateMode when enabled, DeleteMode when disabled
+4. **QueryMode** - Verify current configuration
 
 ### Key API Fields
 
