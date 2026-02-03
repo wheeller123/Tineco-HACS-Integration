@@ -4,6 +4,10 @@ import logging
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.helpers.selector import (
+    CountrySelector,
+    CountrySelectorConfig,
+)
 
 from .const import DOMAIN
 from .tineco_client_impl import TinecoClient, TinecoNewDeviceException
@@ -85,14 +89,14 @@ class TinecoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected exception during login")
                 errors["base"] = "unknown"
 
-        # Text input for region code - user types 2-letter country code
-        # Validated against REGIONS list
+        # Use CountrySelector for searchable country/region picker
         data_schema = vol.Schema({
             vol.Required("email"): str,
             vol.Required("password"): str,
-            vol.Required("region", default="IE"): vol.All(
-                vol.Upper,  # Convert to uppercase
-                vol.In(REGIONS),  # Validate against allowed regions
+            vol.Required("region", default="IE"): CountrySelector(
+                CountrySelectorConfig(
+                    countries=REGIONS,
+                )
             ),
         })
 
@@ -100,7 +104,6 @@ class TinecoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=data_schema,
             errors=errors,
-            description_placeholders={"regions_hint": "US, GB, DE, FR, IE, AU, etc."},
         )
 
     async def async_step_otp(self, user_input=None):

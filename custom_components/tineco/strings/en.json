@@ -2,15 +2,12 @@
   "config": {
     "step": {
       "user": {
-        "title": "Tineco Account",
-        "description": "Enter your Tineco account credentials.",
+        "title": "Tineco IoT Account",
+        "description": "Enter your Tineco account credentials. Select the region matching your mobile app registration.",
         "data": {
           "email": "Email address",
           "password": "Password",
-          "region": "Region"
-        },
-        "data_description": {
-          "region": "Enter your 2-letter country code (e.g., US, GB, DE, FR, IE, AU, NL, ES, IT). Must match your Tineco app registration region."
+          "region": "Region (Default: IE)"
         }
       },
       "otp": {
