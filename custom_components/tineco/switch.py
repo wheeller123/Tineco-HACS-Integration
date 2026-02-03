@@ -438,11 +438,26 @@ class TinecoWaterOnlyModeSwitch(TinecoBaseSwitch):
                 self._state = on
                 self._last_command_time = datetime.now()
                 self.async_write_ha_state()
+                
+                # Immediately notify water mode entities to update their availability
+                await self._update_water_mode_entities()
             else:
                 _LOGGER.error("Failed to send water only mode command")
 
         except Exception as err:
             _LOGGER.error(f"Error sending water only mode command: {err}")
+
+    async def _update_water_mode_entities(self):
+        """Trigger immediate update of water mode dependent entities."""
+        try:
+            # Fire an event to trigger entity updates
+            self.hass.bus.async_fire(
+                f"{DOMAIN}_water_mode_changed",
+                {"entry_id": self.config_entry.entry_id}
+            )
+            _LOGGER.debug("Fired water mode changed event")
+        except Exception as err:
+            _LOGGER.debug(f"Error firing water mode event: {err}")
 
     async def async_update(self):
         """Update water only mode switch state."""

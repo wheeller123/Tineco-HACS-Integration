@@ -757,6 +757,27 @@ class TinecoWaterModePowerSelect(TinecoBaseSelect):
         )
         # Override name with group prefix
         self._attr_name = "Tineco Water Mode: Power"
+        self._remove_listener = None
+
+    async def async_added_to_hass(self):
+        """Register event listener when entity is added."""
+        await super().async_added_to_hass()
+        
+        async def handle_water_mode_changed(event):
+            """Handle water mode changed event."""
+            if event.data.get("entry_id") == self.config_entry.entry_id:
+                self.async_write_ha_state()
+        
+        self._remove_listener = self.hass.bus.async_listen(
+            f"{DOMAIN}_water_mode_changed",
+            handle_water_mode_changed
+        )
+
+    async def async_will_remove_from_hass(self):
+        """Remove event listener when entity is removed."""
+        if self._remove_listener:
+            self._remove_listener()
+            self._remove_listener = None
 
     @property
     def available(self) -> bool:
@@ -837,6 +858,27 @@ class TinecoWaterModeSprayVolumeSelect(TinecoBaseSelect):
         )
         # Override name with group prefix
         self._attr_name = "Tineco Water Mode: Spray Volume"
+        self._remove_listener = None
+
+    async def async_added_to_hass(self):
+        """Register event listener when entity is added."""
+        await super().async_added_to_hass()
+        
+        async def handle_water_mode_changed(event):
+            """Handle water mode changed event."""
+            if event.data.get("entry_id") == self.config_entry.entry_id:
+                self.async_write_ha_state()
+        
+        self._remove_listener = self.hass.bus.async_listen(
+            f"{DOMAIN}_water_mode_changed",
+            handle_water_mode_changed
+        )
+
+    async def async_will_remove_from_hass(self):
+        """Remove event listener when entity is removed."""
+        if self._remove_listener:
+            self._remove_listener()
+            self._remove_listener = None
 
     @property
     def available(self) -> bool:
