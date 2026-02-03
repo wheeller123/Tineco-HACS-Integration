@@ -29,6 +29,18 @@ class TinecoClient:
     AUTH_APPKEY_AUTHCODE = "1538103661113"
     APP_SECRET_AUTHCODE = "197472fcef3935ebc330657266992b99"
 
+    # Region to timezone mapping
+    REGION_TIMEZONE_MAP = {
+        "IE": "Europe/London",
+        "UK": "Europe/London",
+        "PL": "Europe/Warsaw",
+        "DE": "Europe/Berlin",
+        "FR": "Europe/Paris",
+        "ES": "Europe/Madrid",
+        "IT": "Europe/Rome",
+        "US": "America/New_York",
+    }
+
     def __init__(self, device_id: str = None, region: str = "IE", language: str = "EN_US"):
         self.region = region
         self.language = language
@@ -40,7 +52,7 @@ class TinecoClient:
 
         self.APP_VERSION = "1.7.0"
         self.STORE = "google_play"
-        self.AUTH_TIMEZONE = "Europe/Warsaw"
+        self.AUTH_TIMEZONE = self.REGION_TIMEZONE_MAP.get(region, "Europe/London")
 
         self.access_token = ""
         self.uid = ""

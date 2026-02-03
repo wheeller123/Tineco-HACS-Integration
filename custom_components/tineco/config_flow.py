@@ -10,7 +10,7 @@ from .tineco_client_impl import TinecoClient, TinecoNewDeviceException
 
 _LOGGER = logging.getLogger(__name__)
 
-REGIONS = ["IE", "PL", "DE", "FR", "ES", "IT", "US"]
+REGIONS = ["IE", "UK", "PL", "DE", "FR", "ES", "IT", "US"]
 
 class TinecoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Tineco."""
