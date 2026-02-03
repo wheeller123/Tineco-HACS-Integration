@@ -15,6 +15,9 @@ Control your Tineco smart devices through Home Assistant using this custom integ
 | Water Mode: Power | Select | Adjust water mode power (90W, 120W, 150W) |
 | Water Mode: Spray Volume | Select | Set water mode spray level (Mist, Wet, Medium, Rinse, Max) |
 
+### New Setup
+During the integration setup the user can specify the region e.g IE for Ireland or PL for Poland. This is needed to succesfully authenticate
+
 ## Features
 
 - **Device Discovery**: Automatically discovers Tineco devices in your account
