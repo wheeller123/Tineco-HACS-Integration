@@ -358,6 +358,107 @@ def test_tineco_data():
                         print(f"    {endpoint_key}.vl: {vl_value} → {state}")
     else:
         print("\n❌ Command failed - no response received")
+
+    # Mode commands test
+    print("\n" + "="*80)
+    print("MODE COMMANDS TEST (4 SEQUENTIAL COMMANDS)")
+    print("="*80)
+
+    print("\n[6/6] Testing coordinated mode commands...")
+    print("\nThis test simulates the Home Assistant integration's coordinated mode system.")
+    print("It will send 4 commands in sequence to configure all modes.\n")
+
+    # Define test mode settings
+    mode_state = {
+        "suction_power": 2,              # 150W
+        "max_power": 2,                  # 150W
+        "max_spray_volume": 3,           # Rinse
+        "water_only_mode": False,        # OFF
+        "water_mode_power": 1,           # 120W
+        "water_mode_spray_volume": 3,    # Rinse
+    }
+
+    print("📋 Test configuration:")
+    print(f"   Suction Power: {mode_state['suction_power']} (150W)")
+    print(f"   MAX Power: {mode_state['max_power']} (150W)")
+    print(f"   MAX Spray Volume: {mode_state['max_spray_volume']} (Rinse)")
+    print(f"   Water Only Mode: {'ON' if mode_state['water_only_mode'] else 'OFF'}")
+    print(f"   Water Mode Power: {mode_state['water_mode_power']} (120W)")
+    print(f"   Water Mode Spray Volume: {mode_state['water_mode_spray_volume']} (Rinse)")
+
+    # Build the 4 mode commands (same logic as select.py)
+    commands = []
+
+    # Command 1: Suction mode (md=4)
+    cmd1 = {"md": 4, "vm": mode_state["suction_power"]}
+    commands.append(cmd1)
+
+    # Command 2: MAX mode (md=3)
+    cmd2 = {"md": 3, "vm": mode_state["max_power"], "wm": mode_state["max_spray_volume"]}
+    commands.append(cmd2)
+
+    # Command 3: Water mode (md=6)
+    if mode_state["water_only_mode"]:
+        cmd3 = {
+            "md": 6,
+            "vm": mode_state["water_mode_power"],
+            "wm": mode_state["water_mode_spray_volume"]
+        }
+    else:
+        cmd3 = {"md": 6}
+    commands.append(cmd3)
+
+    # Command 4: Empty command
+    cmd4 = {}
+    commands.append(cmd4)
+
+    print(f"\n📤 Sending {len(commands)} commands in sequence...")
+    import time
+
+    all_successful = True
+    for i, command in enumerate(commands, 1):
+        print(f"\n🔧 Command {i}/{len(commands)}: {command}")
+        result = client.control_device(device_id, command, device_resource, device_class)
+
+        if result:
+            # Check if response is {"ret": "ok"}
+            if isinstance(result, dict) and result.get("ret") == "ok":
+                print(f"   ✅ SUCCESS - Response: {json.dumps(result, indent=6)}")
+            else:
+                print(f"   ⚠️  Unexpected response: {json.dumps(result, indent=6)}")
+                all_successful = False
+        else:
+            print(f"   ❌ FAILED - No response received")
+            all_successful = False
+
+        # Small delay between commands
+        if i < len(commands):
+            time.sleep(0.5)
+
+    if all_successful:
+        print("\n✅ All 4 mode commands sent successfully!")
+
+        print("\n⏳ Waiting 3 seconds for device to update...")
+        time.sleep(3)
+
+        print("\n🔄 Fetching updated device info...")
+        updated_info = client.get_complete_device_info(device_id, device_class, device_resource)
+
+        if updated_info:
+            print("\n📊 Device state after mode commands:")
+            for endpoint_key in ['gci', 'cfp']:
+                if endpoint_key in updated_info and isinstance(updated_info[endpoint_key], dict):
+                    payload = updated_info[endpoint_key]
+                    print(f"\n   {endpoint_key}:")
+
+                    # Check for mode-related fields
+                    mode_fields = ['md', 'vm', 'wm', 'wp', 'wom', 'sp', 'mp']
+                    for field in mode_fields:
+                        if field in payload:
+                            print(f"      {field}: {payload[field]}")
+    else:
+        print("\n❌ Some mode commands failed!")
+
     print("\n" + "="*80)
     print("TEST COMPLETE")
     print("="*80)

@@ -188,6 +188,8 @@ class TinecoAudioSwitch(TinecoBaseSwitch):
         """Initialize the sound switch."""
         super().__init__(config_entry, "sound", hass)
         self._state = True  # Assume sound is on by default
+        # Override name with group prefix
+        self._attr_name = "Tineco Sound: Enabled"
 
     async def _send_command(self, on: bool):
         """Send volume command to device."""
@@ -320,8 +322,8 @@ class TinecoFloorBrushLightSwitch(TinecoBaseSwitch):
 
             _LOGGER.info(f"Floor Brush Light: Device context - ID: {device_id}, SN: {device_sn}, Class: {device_class}")
 
-            # Send floor brush light command: led = 1 for on, led = 0 for off
-            command = {"led": 1 if on else 0}
+            # Send floor brush light command: led = 0 for on, led = 1 for off (inverted)
+            command = {"led": 0 if on else 1}
             _LOGGER.info(f"Floor Brush Light: Sending command {command} to device {device_id}")
 
             result = await client.async_control_device(device_id, command, device_sn, device_class)
@@ -384,9 +386,9 @@ class TinecoFloorBrushLightSwitch(TinecoBaseSwitch):
 
                 if payload:
                     if 'led' in payload:
-                        # led = 1 means light on, led = 0 means light off
+                        # led = 0 means light on, led = 1 means light off (inverted)
                         old_state = self._state
-                        self._state = payload['led'] == 1
+                        self._state = payload['led'] == 0
                         _LOGGER.debug(f"Floor Brush Light: State from {payload_source}.led: {payload['led']} → {'ON' if self._state else 'OFF'}")
                         if old_state != self._state:
                             _LOGGER.info(f"Floor Brush Light: State changed from {'ON' if old_state else 'OFF'} to {'ON' if self._state else 'OFF'}")
@@ -414,49 +416,30 @@ class TinecoWaterOnlyModeSwitch(TinecoBaseSwitch):
         """Initialize the water only mode switch."""
         super().__init__(config_entry, "water_only_mode", hass)
         self._state = False  # Assume water only mode is off by default
+        # Override name with group prefix
+        self._attr_name = "Tineco Water Mode: Enabled"
 
     async def _send_command(self, on: bool):
-        """Send water only mode command to device."""
+        """Send water only mode command using coordinated mode commands."""
+        _LOGGER.info(f"Setting water only mode to {'ON' if on else 'OFF'}")
         try:
-            stored = self.hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id, {})
-            client = stored.get("client")
-            if client is None:
-                from .client import TinecoDeviceClient
-                email = self.config_entry.data.get("email")
-                password = self.config_entry.data.get("password")
-                client = TinecoDeviceClient(email, password)
-                self.hass.data[DOMAIN][self.config_entry.entry_id]["client"] = client
-                if not await client.async_login():
-                    _LOGGER.error("Failed to login for water only mode command")
-                    return
+            # Import get_mode_state and send_mode_commands from select module
+            from .select import get_mode_state, send_mode_commands
 
-            device_ctx = stored.get("device")
-            if not device_ctx:
-                devices = await client.async_get_devices()
-                if not devices or not client.devices:
-                    _LOGGER.error("No devices found for water only mode command")
-                    return
-                first = client.devices[0]
-                device_ctx = {
-                    "id": first.get("did") or first.get("deviceId"),
-                    "class": first.get("className", ""),
-                    "resource": first.get("resource", ""),
-                }
-                self.hass.data[DOMAIN][self.config_entry.entry_id]["device"] = device_ctx
+            # Update shared mode state
+            mode_state = get_mode_state(self.hass, self.config_entry)
+            mode_state["water_only_mode"] = on
 
-            device_id = device_ctx.get("id")
-            device_sn = device_ctx.get("resource", "")
-            device_class = device_ctx.get("class", "")
-
-            # Send water only mode command: wom = 1 for on, wom = 0 for off
-            command = {"wom": 1 if on else 0}
-            _LOGGER.info(f"Sending water only mode command to device {device_id}: {command}")
-            result = await client.async_control_device(device_id, command, device_sn, device_class)
+            # Send all mode commands in sequence
+            result = await send_mode_commands(self.hass, self.config_entry)
 
             if result:
-                _LOGGER.info(f"Water only mode command sent successfully: {on}, result: {result}")
+                _LOGGER.info(f"Water only mode command sent successfully: {'ON' if on else 'OFF'}")
+                self._state = on
+                self._last_command_time = datetime.now()
+                self.async_write_ha_state()
             else:
-                _LOGGER.error("Failed to send water only mode command - no result returned")
+                _LOGGER.error("Failed to send water only mode command")
 
         except Exception as err:
             _LOGGER.error(f"Error sending water only mode command: {err}")
@@ -471,24 +454,15 @@ class TinecoWaterOnlyModeSwitch(TinecoBaseSwitch):
                     _LOGGER.debug(f"Skipping update - recent command sent {time_since_command.total_seconds():.1f}s ago")
                     return
 
-            stored = self.hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id, {})
-            coordinator = stored.get("coordinator")
+            # Import functions from select module
+            from .select import get_mode_state, update_mode_state_from_coordinator
 
-            if coordinator and coordinator.data:
-                # Get current water only mode state from coordinator data
-                info = coordinator.data
+            # Sync shared mode state with device state
+            update_mode_state_from_coordinator(self.hass, self.config_entry)
 
-                # Check gci or cfp for wom (water only mode) field
-                payload = None
-                if isinstance(info, dict):
-                    if 'gci' in info and isinstance(info['gci'], dict):
-                        payload = info['gci']
-                    elif 'cfp' in info and isinstance(info['cfp'], dict):
-                        payload = info['cfp']
-
-                if payload and 'wom' in payload:
-                    # wom = 1 means water only mode on, wom = 0 means off
-                    self._state = payload['wom'] == 1
+            # Update from shared mode state which is synchronized with device
+            mode_state = get_mode_state(self.hass, self.config_entry)
+            self._state = mode_state.get("water_only_mode", False)
 
         except Exception as err:
             _LOGGER.debug(f"Error updating water only mode switch: {err}")
