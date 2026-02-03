@@ -2,13 +2,19 @@
 """Test script to examine Tineco API data without deploying to Home Assistant."""
 
 import json
-import sys
 import os
+import importlib.util
 
-# Add paths to import the Tineco client directly
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'custom_components', 'tineco'))
+# Import TinecoClient by loading the module directly to avoid path conflicts
+def load_tineco_client():
+    """Load TinecoClient module without adding to sys.path."""
+    tineco_path = os.path.join(os.path.dirname(__file__), 'custom_components', 'tineco', 'tineco_client_impl.py')
+    spec = importlib.util.spec_from_file_location("tineco_client_impl", tineco_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.TinecoClient
 
-from tineco_client_impl import TinecoClient
+TinecoClient = load_tineco_client()
 
 
 def test_tineco_data():
@@ -190,12 +196,126 @@ def test_tineco_data():
     else:
         print("    ⚠️ No water tank fields found!")
     
+    # Light control analysis
+    print("\n💡 FLOOR BRUSH LIGHT SENSOR:")
+    print("  Looking for led, light, lamp, brush light fields...")
+
+    def find_light_fields(obj, path=""):
+        """Recursively find light-related fields."""
+        results = []
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                current_path = f"{path}.{key}" if path else key
+                if key.lower() in ['led', 'light', 'lamp', 'fbl', 'fl', 'bl', 'brush_light']:
+                    results.append((current_path, key.lower(), value))
+                if isinstance(value, (dict, list)):
+                    results.extend(find_light_fields(value, current_path))
+        elif isinstance(obj, list):
+            for i, item in enumerate(obj):
+                results.extend(find_light_fields(item, f"{path}[{i}]"))
+        return results
+
+    light_fields = find_light_fields(info)
+    if light_fields:
+        for path, field, value in light_fields:
+            status = "ON" if value == 1 else "OFF" if value == 0 else f"Unknown ({value})"
+            print(f"    {path}: {value} → {status}")
+    else:
+        print("    ⚠️ No light fields found!")
+
+    # Floor Brush Light control test
+    print("\n" + "="*80)
+    print("FLOOR BRUSH LIGHT CONTROL TEST")
+    print("="*80)
+
+    print("\n[4/5] Testing floor brush light control command...")
+
+    # Check current light state
+    print("\n💡 Current floor brush light state:")
+    for endpoint_key in ['gci', 'cfp']:
+        if endpoint_key in info and isinstance(info[endpoint_key], dict):
+            if 'led' in info[endpoint_key]:
+                led_value = info[endpoint_key]['led']
+                state = "ON" if led_value == 1 else "OFF"
+                print(f"    {endpoint_key}.led: {led_value} → {state}")
+
+    # Test floor brush light control - try turning it ON
+    print("\n🔧 Testing floor brush light with {'led': 1} (turn ON)...")
+    command = {"led": 1}
+
+    print(f"   Device ID: {device_id}")
+    print(f"   Device Class: {device_class}")
+    print(f"   Device Resource: {device_resource}")
+
+    result = client.control_device(device_id, command, device_resource, device_class)
+
+    if result:
+        print("\n✅ Command sent successfully!")
+        print(f"   Response: {json.dumps(result, indent=2)}")
+
+        # Wait and check new state
+        import time
+        print("\n⏳ Waiting 3 seconds for device to update...")
+        time.sleep(3)
+
+        print("\n🔄 Fetching updated device info...")
+        updated_info = client.get_complete_device_info(device_id, device_class, device_resource)
+
+        if updated_info:
+            print("\n💡 Updated floor brush light state:")
+            for endpoint_key in ['gci', 'cfp']:
+                if endpoint_key in updated_info and isinstance(updated_info[endpoint_key], dict):
+                    if 'led' in updated_info[endpoint_key]:
+                        led_value = updated_info[endpoint_key]['led']
+                        state = "ON" if led_value == 1 else "OFF"
+                        print(f"    {endpoint_key}.led: {led_value} → {state}")
+
+            # Now try turning it OFF
+            print("\n🔧 Testing floor brush light with {'led': 0} (turn OFF)...")
+            command = {"led": 0}
+            result = client.control_device(device_id, command, device_resource, device_class)
+
+            if result:
+                print("\n✅ OFF command sent successfully!")
+                print(f"   Response: {json.dumps(result, indent=2)}")
+
+                print("\n⏳ Waiting 3 seconds for device to update...")
+                time.sleep(3)
+
+                print("\n🔄 Fetching final device info...")
+                final_info = client.get_complete_device_info(device_id, device_class, device_resource)
+
+                if final_info:
+                    print("\n💡 Final floor brush light state:")
+                    for endpoint_key in ['gci', 'cfp']:
+                        if endpoint_key in final_info and isinstance(final_info[endpoint_key], dict):
+                            if 'led' in final_info[endpoint_key]:
+                                led_value = final_info[endpoint_key]['led']
+                                state = "ON" if led_value == 1 else "OFF"
+                                print(f"    {endpoint_key}.led: {led_value} → {state}")
+            else:
+                print("\n❌ OFF command failed - no response received")
+    else:
+        print("\n❌ Command failed - no response received")
+        print("\n🔍 Trying alternative command keys...")
+
+        # Try alternative keys
+        for alt_key in ['light', 'fbl', 'fl', 'lamp']:
+            print(f"\n   Testing with {{'{alt_key}': 1}}...")
+            alt_result = client.control_device(device_id, {alt_key: 1}, device_resource, device_class)
+            if alt_result:
+                print(f"   ✅ {alt_key} command worked!")
+                print(f"   Response: {json.dumps(alt_result, indent=2)}")
+                break
+            else:
+                print(f"   ❌ {alt_key} command failed")
+
     # Volume control test
     print("\n" + "="*80)
     print("VOLUME CONTROL TEST")
     print("="*80)
-    
-    print("\n[4/4] Testing volume control command...")
+
+    print("\n[5/5] Testing volume control command...")
     
     # Check current volume state
     print("\n📢 Current volume/mute state:")

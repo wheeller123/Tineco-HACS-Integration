@@ -32,8 +32,9 @@ async def async_setup_entry(
         TinecoVacuumStatusSensor(config_entry, hass, coordinator),
         TinecoWaterTankSensor(config_entry, hass, coordinator),
         TinecoFreshWaterTankSensor(config_entry, hass, coordinator),
+        TinecoBrushRollerSensor(config_entry, hass, coordinator),
     ]
-    
+
     async_add_entities(sensors)
 
 
@@ -647,3 +648,95 @@ class TinecoFreshWaterTankSensor(TinecoBaseSensor):
             return "mdi:water-minus"
         else:
             return "mdi:water-check"
+
+
+class TinecoBrushRollerSensor(TinecoBaseSensor):
+    """Sensor for brush roller status."""
+
+    def __init__(self, config_entry: ConfigEntry, hass: HomeAssistant, coordinator):
+        """Initialize."""
+        super().__init__(config_entry, "brush_roller", hass, coordinator)
+        self._state = "normal"
+        self._attr_device_class = SensorDeviceClass.ENUM
+        self._attr_options = ["normal", "tangled", "stuck", "needs_cleaning"]
+        self._attr_translation_key = "brush_roller"
+
+    def _update_state_from_data(self, info: Dict):
+        """Update state from device info."""
+        try:
+            payload = None
+
+            if isinstance(info, dict):
+                # Priority: gci > cfp
+                if 'gci' in info and isinstance(info['gci'], dict):
+                    payload = info['gci']
+                elif 'cfp' in info and isinstance(info['cfp'], dict):
+                    payload = info['cfp']
+
+            if payload:
+                status = self._parse_brush_roller_status(payload)
+                if status:
+                    self._state = status
+                    return
+
+            # Default to normal if we can't determine
+            self._state = "normal"
+
+        except Exception as err:
+            _LOGGER.error(f"Error parsing brush roller status: {err}", exc_info=True)
+            self._state = "unknown"
+
+    def _parse_brush_roller_status(self, payload: Dict) -> Optional[str]:
+        """Parse brush roller status from payload."""
+        if not isinstance(payload, dict):
+            return None
+
+        def extract_values(obj, target_keys):
+            result = {}
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    k_lower = k.lower() if isinstance(k, str) else ""
+                    if k_lower in target_keys:
+                        result[k_lower] = v
+                    if isinstance(v, (dict, list, tuple)):
+                        result.update(extract_values(v, target_keys))
+            elif isinstance(obj, (list, tuple)):
+                for item in obj:
+                    result.update(extract_values(item, target_keys))
+            return result
+
+        # Extract brush roller related fields
+        # br = brush roller status, brs = brush roller speed
+        fields = extract_values(payload, ["br", "brs", "brush_roller", "roller_status"])
+
+        # Check br field for brush roller status
+        br = fields.get("br")
+        if br is not None:
+            try:
+                status_code = int(br)
+                # Map status codes to states
+                # 0 = normal, 1 = tangled, 2 = stuck, 3 = needs_cleaning
+                if status_code == 0:
+                    return "normal"
+                elif status_code == 1:
+                    return "tangled"
+                elif status_code == 2:
+                    return "stuck"
+                elif status_code == 3:
+                    return "needs_cleaning"
+            except (ValueError, TypeError):
+                pass
+
+        return "normal"
+
+    @property
+    def icon(self):
+        """Return the icon based on state."""
+        if self._state == "tangled":
+            return "mdi:alert-circle"
+        elif self._state == "stuck":
+            return "mdi:alert"
+        elif self._state == "needs_cleaning":
+            return "mdi:broom"
+        else:  # normal
+            return "mdi:rotate-3d-variant"

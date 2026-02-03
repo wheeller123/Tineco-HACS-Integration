@@ -10,7 +10,32 @@ from .tineco_client_impl import TinecoClient, TinecoNewDeviceException
 
 _LOGGER = logging.getLogger(__name__)
 
-REGIONS = ["IE", "UK", "PL", "DE", "FR", "ES", "IT", "US"]
+# All supported regions from Tineco Area enum
+REGIONS = [
+    "CN", "TW", "MY", "JP", "SG", "DE", "AT", "LI", "FR", "TH",
+    "US", "ES", "GB", "NO", "MX", "IN", "CH", "HK", "IT", "NL",
+    "SE", "LU", "BE", "AE", "BR", "CA", "UA", "CZ", "PL", "DK",
+    "PT", "KR", "TR", "AU", "LV", "LT", "KW", "EE", "HU", "OM",
+    "RU", "SK", "BH", "MA", "QA", "IR", "IL", "BZ", "CR", "SV",
+    "GT", "HN", "NI", "PA", "AI", "AG", "AW", "BS", "BB", "BM",
+    "VG", "KY", "CU", "DM", "DO", "GD", "GP", "HT", "JM", "MQ",
+    "MS", "AN", "PR", "KN", "LC", "VC", "TT", "TC", "VI", "AR",
+    "BO", "CL", "CO", "EC", "FK", "GF", "GY", "PY", "PE", "SR",
+    "UY", "VE", "MO", "KP", "MN", "PH", "BN", "KH", "TP", "ID",
+    "LA", "MM", "VN", "PK", "BD", "BT", "MV", "NP", "LK", "KZ",
+    "KG", "TJ", "UZ", "TM", "AF", "AM", "AZ", "CY", "GE", "IQ",
+    "JO", "LB", "PS", "SA", "SY", "YE", "IS", "GL", "FO", "FI",
+    "BY", "MD", "IE", "MC", "AL", "AD", "BA", "BG", "HR", "GI",
+    "GR", "MK", "MT", "RO", "SM", "RS", "SI", "VA", "DZ", "EG",
+    "LY", "SD", "TN", "BI", "DJ", "ER", "ET", "KE", "RW", "SC",
+    "SO", "TZ", "UG", "TD", "CM", "CF", "CG", "DR", "CQ", "GA",
+    "ST", "BJ", "BF", "IC", "CV", "GM", "GH", "GW", "GN", "CI",
+    "LR", "ML", "MR", "NE", "NG", "SN", "SL", "TG", "EH", "AO",
+    "BW", "KM", "LS", "MG", "MW", "MU", "MZ", "NA", "RE", "ZA",
+    "SH", "SZ", "ZM", "ZW", "CX", "CC", "CK", "FJ", "PF", "GU",
+    "KI", "MH", "FM", "NR", "NC", "NZ", "NU", "NF", "PW", "PG",
+    "PN", "WS", "SB", "MP", "TK", "TO", "TV", "VU", "WF"
+]
 
 class TinecoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Tineco."""

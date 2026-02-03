@@ -96,8 +96,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             raise UpdateFailed("Failed to get device info")
         return info
 
-    # Get scan interval from options or default to 60s
-    scan_interval = entry.options.get("scan_interval", 60)
+    # Get scan interval from options or default to 15s
+    scan_interval = entry.options.get("scan_interval", 15)
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
