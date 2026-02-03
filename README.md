@@ -146,25 +146,6 @@ Once configured, the integration will create the following entities:
 - Ensure your Tineco account is active
 - Try resetting your Tineco password on the official app
 
-### Device Not Discovered
-
-- Ensure your device is online
-- Check your internet connection
-- Restart Home Assistant
-- Try removing and re-adding the integration
-
-### Sensors Not Updating
-
-- Check the scan interval in integration options (default: 60 seconds)
-- Verify your device is connected to the internet
-- Check Home Assistant logs for errors: `Settings` → `System` → `Logs`
-
-### Water Tank Status Not Accurate
-
-- Ensure the integration has been restarted after installation
-- Check that error codes are being reported correctly by the device
-- The sensors update based on device-reported error codes (e2=64 for empty fresh water tank)
-
 ## API Queries Used
 
 This integration uses the following device queries:
@@ -198,7 +179,7 @@ Created by Jack Whelan
 
 ## Disclaimer
 
-This integration is not affiliated with Tineco. It uses reverse-engineered APIs. Use at your own risk. I developed this specifically for my S7 Flashdry, it may not work with other models but I am happy to try and add others with comminuty support
+This integration is not affiliated with Tineco. It uses reverse-engineered APIs. Use at your own risk. I developed this specifically for my S7 Flashdry, it may not work with other models but I am happy to try and add others with community support
 
 ## License
 
