@@ -729,7 +729,6 @@ class TinecoClient:
 
             if response.status_code == 200:
                 ngiot_ret = response.headers.get("X-NGIOT-RET", "")
-                ngiot_fmt = response.headers.get("X-Ngiot-Fmt", "")
 
                 if ngiot_ret == "ok":
                     if response.text and response.text.strip():

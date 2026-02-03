@@ -371,7 +371,7 @@ class TinecoFloorBrushLightSwitch(TinecoBaseSwitch):
             if coordinator and coordinator.data:
                 # Get current floor brush light state from coordinator data
                 info = coordinator.data
-                _LOGGER.debug(f"Floor Brush Light: Updating state from coordinator data")
+                _LOGGER.debug("Floor Brush Light: Updating state from coordinator data")
 
                 # Check gci or cfp for led (floor brush light) field
                 payload = None
