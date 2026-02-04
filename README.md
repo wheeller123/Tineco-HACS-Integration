@@ -2,6 +2,22 @@
 
 Control your Tineco smart devices through Home Assistant using this custom integration.
 
+## What's New in v2.0.0
+
+### New Controls
+| Control | Type | Description |
+|---------|------|-------------|
+| Water Mode: Enabled | Switch | Enable/disable water-only cleaning mode |
+| Floor Brush Light | Switch | Toggle floor brush LED light |
+| Suction Mode: Power | Select | Adjust suction power (120W, 150W) |
+| MAX Mode: Power | Select | Adjust MAX mode power (120W, 150W) |
+| MAX Mode: Spray Volume | Select | Set MAX mode spray level (Rinse, Max) |
+| Water Mode: Power | Select | Adjust water mode power (90W, 120W, 150W) |
+| Water Mode: Spray Volume | Select | Set water mode spray level (Mist, Wet, Medium, Rinse, Max) |
+
+### New Setup
+During the integration setup the user can specify the region e.g IE for Ireland or PL for Poland. This is needed to succesfully authenticate
+
 ## Features
 
 - **Device Discovery**: Automatically discovers Tineco devices in your account
@@ -32,6 +48,14 @@ Control your Tineco smart devices through Home Assistant using this custom integ
   - Grouped entity naming for easy organization
 - **Configuration UI**: Easy setup through Home Assistant UI
 - **Multi-language Support**: English and Spanish
+
+### Improvements
+- **Smart Availability**: Water Mode controls automatically grey out when Water Mode is disabled
+- **Grouped Entity Naming**: Related controls are now prefixed (e.g., "Tineco Sound:", "Tineco Water Mode:")
+- **Instant UI Updates**: Control availability updates immediately when toggling Water Mode
+- **Coordinated Mode Commands**: Mode changes now send properly synchronized commands to the device
+- **Renamed Integration**: Changed from "Tineco IoT" to "Tineco" for simplicity
+
 
 ## Installation
 

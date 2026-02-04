@@ -4,6 +4,10 @@ import logging
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.helpers.selector import (
+    CountrySelector,
+    CountrySelectorConfig,
+)
 
 from .const import DOMAIN
 from .tineco_client_impl import TinecoClient, TinecoNewDeviceException
@@ -85,10 +89,15 @@ class TinecoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected exception during login")
                 errors["base"] = "unknown"
 
+        # Use CountrySelector for searchable country/region picker
         data_schema = vol.Schema({
             vol.Required("email"): str,
             vol.Required("password"): str,
-            vol.Required("region", default="IE"): vol.In(REGIONS),
+            vol.Required("region", default="IE"): CountrySelector(
+                CountrySelectorConfig(
+                    countries=REGIONS,
+                )
+            ),
         })
 
         return self.async_show_form(
