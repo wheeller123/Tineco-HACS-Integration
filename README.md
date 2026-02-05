@@ -2,7 +2,7 @@
 
 Control your Tineco smart devices through Home Assistant using this custom integration.
 
-## What's New in v2.0.0
+## What's New in v2.0.1
 
 ### New Controls
 | Control | Type | Description |
